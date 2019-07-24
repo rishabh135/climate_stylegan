@@ -54,7 +54,7 @@ def preprocess_fit_train_image(images, res):
     return images
 
 def load_data(dataset_name) :
-    x = glob(os.path.join("./dataset", dataset_name, '*.*'))
+    x = glob(os.path.join("/global/u1/r/rgupta2/rgupta2/StyleGAN/dataset/", dataset_name, '*.*'))
 
     return x
 
@@ -85,6 +85,7 @@ def inverse_transform(images):
     return (images+1.)/2.
 
 def check_folder(log_dir):
+    print("Checking folder: ", log_dir)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     return log_dir
