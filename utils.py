@@ -54,7 +54,7 @@ def preprocess_fit_train_image(images, res):
     return images
 
 def load_data(dataset_name) :
-    x = glob(os.path.join("/global/u1/r/rgupta2/rgupta2/StyleGAN/dataset/", dataset_name, '*.*'))
+    x = glob(os.path.join("/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset", dataset_name, '*.*'))
 
     return x
 
@@ -71,6 +71,7 @@ def merge(images, size):
         j = idx // size[1]
         img[h*j:h*(j+1), w*i:w*(i+1), :] = image
 
+    print("saving fake imgs size: ", img.shape())
     return img
 
 def imsave(images, size, path):
@@ -85,7 +86,6 @@ def inverse_transform(images):
     return (images+1.)/2.
 
 def check_folder(log_dir):
-    print("Checking folder: ", log_dir)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     return log_dir
@@ -97,12 +97,23 @@ def show_all_variables():
 def str2bool(x):
     return x.lower() in ('true')
 
-def get_checkpoint_res(checkpoint_counter, batch_sizes, iteration, start_res, gpu_num) :
-    batch_sizes_value = list(batch_sizes.values())
+def get_checkpoint_res(checkpoint_counter, batch_sizes, iteration, start_res, end_res, gpu_num, end_iteration, do_trans) :
     batch_sizes_key = list(batch_sizes.keys())
 
     start_index = batch_sizes_key.index(start_res)
-    iteration_per_res = [iteration // (x * gpu_num) for x in batch_sizes_value]
+
+    iteration_per_res = []
+
+    for res, bs in batch_sizes.items() :
+
+        if do_trans[res] :
+            if res == end_res :
+                iteration_per_res.append(end_iteration // (bs * gpu_num))
+            else :
+                iteration_per_res.append(iteration // (bs * gpu_num))
+        else :
+            iteration_per_res.append((iteration // 2) // (bs * gpu_num))
+
     iteration_per_res = iteration_per_res[start_index:]
 
     for i in range(len(iteration_per_res)) :

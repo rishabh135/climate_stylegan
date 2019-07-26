@@ -1,4 +1,4 @@
-
+	
 from comet_ml import Experiment
 
 from StyleGAN import StyleGAN
@@ -20,16 +20,16 @@ def parse_args():
 	parser = argparse.ArgumentParser(description=desc)
 	parser.add_argument('--phase', type=str, default='train', help='[train, test, draw]')
 	parser.add_argument('--draw', type=str, default='uncurated', help='[uncurated, style_mix, truncation_trick]')
-	parser.add_argument('--dataset', type=str, default='FFHQ_128/', help='The dataset name what you want to generate')
+	parser.add_argument('--dataset', type=str, default='FFHQ', help='The dataset name what you want to generate')
 
 	parser.add_argument('--iteration', type=int, default=50000, help='The number of images used in the train phase')
-	parser.add_argument('--max_iteration', type=int, default=70000, help='The total number of images')
-	
-	parser.add_argument('--batch_size', type=int, default=1, help='The size of batch in the test phase')
-	parser.add_argument('--gpu_num', type=int, default=1, help='The number of gpu')
+	parser.add_argument('--max_iteration', type=int, default=75000, help='The total number of images')
+
+	parser.add_argument('--batch_size', type=int, default=4, help='The size of batch in the test phase')
+	parser.add_argument('--gpu_num', type=int, default=8, help='The number of gpu')
 
 	parser.add_argument('--progressive', type=str2bool, default=True, help='use progressive training')
-	parser.add_argument('--sn', type=str2bool, default=False, help='use spectral normalization')
+	parser.add_argument('--sn', type=str2bool, default=True, help='use spectral normalization')
 
 	parser.add_argument('--start_res', type=int, default=8, help='The number of starting resolution')
 	parser.add_argument('--img_size', type=int, default=1024, help='The target size of image')
@@ -37,13 +37,13 @@ def parse_args():
 
 	parser.add_argument('--seed', type=str2bool, default=True, help='seed in the draw phase')
 
-	parser.add_argument('--checkpoint_dir', type=str, default='checkpoint',
+	parser.add_argument('--checkpoint_dir', type=str, default='../stored_outputs/checkpoint',
 						help='Directory name to save the checkpoints')
-	parser.add_argument('--result_dir', type=str, default='results',
+	parser.add_argument('--result_dir', type=str, default='../stored_outputs/results',
 						help='Directory name to save the generated images')
-	parser.add_argument('--log_dir', type=str, default='logs',
+	parser.add_argument('--log_dir', type=str, default='../stored_outputs/logs',
 						help='Directory name to save training logs')
-	parser.add_argument('--sample_dir', type=str, default='samples',
+	parser.add_argument('--sample_dir', type=str, default='../stored_outputs/samples',
 						help='Directory name to save the samples on training')
 
 	return check_args(parser.parse_args())
@@ -79,21 +79,20 @@ def main():
 	args = parse_args()
 	
 	if args is None:
-	  exit()
+		exit()
 
 	# open session
 	with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 		with experiment.train():
 			gan = StyleGAN(sess, args, experiment)
 
-		   
-
-			
 			# build graph
 			gan.build_model()
 
 			# show network architecture
 			show_all_variables()
+
+			experiment.set_model_graph(sess.graph)
 
 			if args.phase == 'train' :
 				# launch the graph in a session
@@ -119,3 +118,8 @@ def main():
 
 if __name__ == '__main__':
 	main()
+
+
+
+
+

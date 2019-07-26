@@ -1,6 +1,10 @@
 import time
 from ops import *
 from utils import *
+import tensorflow
+print(tensorflow.__version__)
+
+
 from tensorflow.contrib.data import prefetch_to_device, shuffle_and_repeat, map_and_batch
 import numpy as np
 import PIL.Image
@@ -9,6 +13,7 @@ from tqdm import tqdm
 class StyleGAN(object):
 
     def __init__(self, sess, args, experiment):
+
 
         self.experiment = experiment
         self.phase = args.phase
@@ -314,6 +319,7 @@ class StyleGAN(object):
                 else:
                     alpha_assign_op = tf.assign(alpha, zero_constant)
 
+
                 with tf.control_dependencies([alpha_assign_op]):
                     for gpu_id in range(self.gpu_num):
                         with tf.device(tf.DeviceSpec(device_type="GPU", device_index=gpu_id)):
@@ -486,7 +492,12 @@ class StyleGAN(object):
                 self.writer.add_summary(summary_alpha, idx)
 
                 # display training status
+                self.experiment.set_step(counter)
                 counter += 1
+
+                self.experiment.log_metric("d_loss",d_loss,step=counter)
+                self.experiment.log_metric("g_loss",g_loss,step=counter)
+
 
                 print("Current res: [%4d] [%6d/%6d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
                       % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss))
@@ -496,6 +507,7 @@ class StyleGAN(object):
                     manifold_h = int(np.floor(np.sqrt(batch_size_per_res)))
                     manifold_w = int(np.floor(np.sqrt(batch_size_per_res)))
 
+                    self.experiment.log_image( merge(amples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w] ), name="fake images generated during training")
                     save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
                                 './{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1))
 
