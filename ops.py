@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import sys
 from collections import OrderedDict
 
 ##################################################################################
@@ -24,7 +25,6 @@ def get_weight(weight_shape, gain, lrmul):
 def conv(x, channels, kernel=3, stride=1, gain=np.sqrt(2), lrmul=1.0, sn=False, scope='conv_0'):
     with tf.variable_scope(scope):
         weight_shape = [kernel, kernel, x.get_shape().as_list()[-1], channels]
-
         weight = get_weight(weight_shape, gain, lrmul)
 
         if sn :
@@ -192,6 +192,8 @@ def get_alpha_const(iterations, batch_size, global_step) :
 ##################################################################################
 
 def discriminator_block(x, res, n_f0, n_f1, sn=False):
+
+    print(tf.print(tf.shape(x), [tf.shape(x)], "Shape for x when it enters discriminator_block :"))
     with tf.variable_scope('{:d}x{:d}'.format(res, res)):
         with tf.variable_scope('Conv0'):
             x = conv(x, channels=n_f0, kernel=3, stride=1, gain=np.sqrt(2), lrmul=1.0, sn=sn)
