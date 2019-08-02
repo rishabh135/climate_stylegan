@@ -104,7 +104,7 @@ class StyleGAN(object):
 		print("# progressive training : ", self.progressive)
 		print("# spectral normalization : ", self.sn)
 
-		print()
+
 
 	##################################################################################
 	# Generator
@@ -142,10 +142,13 @@ class StyleGAN(object):
 			""" remaining layers """
 			if self.progressive :
 
-				print("entered self.progressive :  x ", x.shape )
 
-				images_out = torgb(x, res=res, sn=self.sn)
-				print("entered self.progressive : images_shape ", images_out.shape )
+				if(self.rbc_data):
+					images_out = x
+				else:
+					images_out = torgb(x, res, input_channels=self.input_channels, sn=self.sn)
+				
+
 				
 				coarse_styles.pop(res, None)
 
@@ -153,12 +156,14 @@ class StyleGAN(object):
 				# pose, hair, face shape
 				for res, n_f in coarse_styles.items():
 					x = synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=self.sn)
-					
-					print("entered self.progressive : x inside coarse style ", x.shape )
-				
-					img = torgb(x, res, sn=self.sn)
 
-					print("entered self.progressive : img in coarse style ", img.shape )
+				
+					if(self.rbc_data):
+						img = x
+					else:
+						img = torgb(x, res, self.input_channels, sn=self.sn)
+
+
 				
 					images_out = upscale2d(images_out)
 					images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
@@ -169,7 +174,11 @@ class StyleGAN(object):
 				# facial features, eye
 				for res, n_f in middle_styles.items():
 					x = synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=self.sn)
-					img = torgb(x, res, sn=self.sn)
+					if(self.rbc_data):
+						img = x
+					else:
+						img = torgb(x, res, self.input_channels,  sn=self.sn)
+					
 					images_out = upscale2d(images_out)
 					images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
 
@@ -179,7 +188,12 @@ class StyleGAN(object):
 				# color scheme
 				for res, n_f in fine_styles.items():
 					x = synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=self.sn)
-					img = torgb(x, res, sn=self.sn)
+					
+					if(self.rbc_data):
+						img = x
+					else:
+						img = torgb(x, res, self.input_channels, sn=self.sn)
+					
 					images_out = upscale2d(images_out)
 					images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
 
@@ -190,7 +204,11 @@ class StyleGAN(object):
 					x = synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=self.sn)
 
 					layer_index += 2
-				images_out = torgb(x, resolutions[-1], sn=self.sn)
+
+				if(self.rbc_data):
+					images_out = x
+				else:
+					images_out = torgb(x, resolutions[-1], self.input_channels, sn=self.sn)
 
 			return images_out
 
@@ -229,6 +247,8 @@ class StyleGAN(object):
 	##################################################################################
 
 	def discriminator(self, x_init, alpha, target_img_size, reuse=tf.AUTO_REUSE):
+
+		print("tf.shape of x_init: ", tf.keras.backend.eval(tf.shape(x_init)))	 
 		with tf.variable_scope("discriminator", reuse=reuse):
 			resolutions = resolution_list(target_img_size)
 			featuremaps = featuremap_list(target_img_size)
@@ -236,23 +256,33 @@ class StyleGAN(object):
 			r_resolutions = resolutions[::-1]
 			r_featuremaps = featuremaps[::-1]
 
-			print("fromrgb x_init shape: ", x_init.shape)
+			print("inside discriminator_block : with x_init : ", x_init.shape)
+			
 			
 			""" set inputs """
-			x = fromrgb(x_init, r_resolutions[0], r_featuremaps[0], self.sn)
-			print("fromrgb x : ", x .shape)
-			print("\n\n")
+			if(self.rbc_data):
+				x = x_init
+			else:
+				x = fromrgb(x_init, r_resolutions[0], r_featuremaps[0], self.sn)
+				print("scope of x after fromrgb: ", x.name)	
+				print("shape of x after fromrgb: ", tf.keras.backend.eval(tf.shape(x)))
 
 			""" stack discriminator blocks """
 			for index, (res, n_f) in enumerate(zip(r_resolutions[:-1], r_featuremaps[:-1])):
 				res_next = r_resolutions[index + 1]
 				n_f_next = r_featuremaps[index + 1]
 
+				print("tf.shape of x inside stack discriminator blocks: with index {} res: {} is {}".format(index, res, tf.keras.backend.eval(tf.shape(x)))) 
 				x = discriminator_block(x, res, n_f, n_f_next, self.sn)
 
 				if self.progressive :
 					x_init = downscale2d(x_init)
-					y = fromrgb(x_init, res_next, n_f_next, self.sn)
+
+					if(self.rbc_data):
+						y = x_init		
+					else:
+						y = fromrgb(x_init, res_next, n_f_next, self.sn)
+					
 					x = smooth_transition(y, x, res, r_resolutions[0], alpha)
 
 			""" last block """
@@ -389,7 +419,9 @@ class StyleGAN(object):
 								z = tf.random_normal(shape=[batch_size, self.z_dim])
 
 								fake_img = self.generator(z, alpha, res)
-								# real_img = smooth_crossfade(real_img, alpha)
+								
+								if(not self.rbc_data):
+									real_img = smooth_crossfade(real_img, alpha)
 
 								real_logit = self.discriminator(real_img, alpha, res)
 								fake_logit = self.discriminator(fake_img, alpha, res)
@@ -457,6 +489,7 @@ class StyleGAN(object):
 
 		# saver to save model
 		self.saver = tf.train.Saver(max_to_keep=10)
+		self.experiment.set_model_graph(self.sess.graph)
 
 		# summary writer
 		self.writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir, self.sess.graph)

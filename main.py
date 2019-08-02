@@ -91,9 +91,9 @@ def main():
 
 	# open session
 	# Assume that you have 12GB of GPU memory and want to allocate ~4GB:
-	gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0, allow_growth=True)
+	gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8, allow_growth = True)
 	
-	with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
+	with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
 		with experiment.train():
 			gan = StyleGAN(sess, args, experiment)
 

@@ -17,14 +17,14 @@ import cv2
 
 
 def read_npy_file(item, res):
-	data = np.load(item.decode()).transpose(0,1,3,4,2).reshape(-1,128,128,4)
+	# NCHW ---> NHWC
+	data = np.load(item.decode()).transpose(0,2,3,1)
 	return data.astype(np.float32)
 
 
 
 def load_from_numpy(dataset_name):
-	end_time = 2000
-	filelist =  sorted(glob("/global/cscratch1/sd/rgupta2/backup/netcdf/npy_files/*_{}.npy".format(end_time) ))
+	filelist =  sorted(glob("/global/cscratch1/sd/rgupta2/backup/netcdf_256_resolution_2_channels/rbc_500/*.npy"))[:2]
 	return filelist
 
 
