@@ -3,28 +3,95 @@ import os
 from glob import glob
 from ops import lerp
 
- 
 import numpy as np
 import re
 import tensorflow as tf
 # import tensorflow_datasets as tfds
-
+import scipy
 
 import tensorflow.contrib.slim as slim
 import cv2
 
 
+def _resize_image(image, target):
+	return cv2.resize(image, dsize=(target, target), interpolation=cv2.INTER_AREA)
+
+
+
+def npy_header_offset(npy_path):
+    with open(str(npy_path), 'rb') as f:
+        if f.read(6) != b'\x93NUMPY':
+            raise ValueError('Invalid NPY file.')
+        version_major, version_minor = f.read(2)
+        if version_major == 1:
+            header_len_size = 2
+        elif version_major == 2:
+            header_len_size = 4
+        else:
+            raise ValueError('Unknown NPY file version {}.{}.'.format(version_major, version_minor))
+        header_len = sum(b << (8 * i) for i, b in enumerate(f.read(header_len_size)))
+        header = f.read(header_len)
+        if not header.endswith(b'\n'):
+            raise ValueError('Invalid NPY file.')
+        return f.tell()
 
 
 def read_npy_file(item, res):
 	# NCHW ---> NHWC
 	data = np.load(item.decode()).transpose(0,2,3,1)
+	image = [_resize_image(image=i, target=res) for i in data]
+	data= np.stack(image, axis=0)
 	return data.astype(np.float32)
+	# print("data: ",data.shape)
+	# print("inside read_npy_file first line : ", type(data))
+	# data = data.astype(np.float32)
+	# print("data: ",data.shape)
+	# print("res: ", res)
+	# data =  cv2.resize(data, dsize=(res, res), interpolation=cv2.INTER_AREA)
+	# print("inside read_npy_file : ", type(data))
+	# print("data: ",data.shape)
+
+
+
+def create_from_numpy(tfrecord_dir, numpy_filename, shuffle, res, channels):
+
+	# data = [np.load(file.decode()).transpose(0,2,3,1) for file in filelist]
+	# return data
+
+	# reading in NCHW format
+	all_arr = np.load(numpy_filename, mmap_mode='r')
+
+	img = all_arr[0]
+	resolution = img.shape[1]
+	
+	# channels = 3 if len(img.shape) == 3 else 1
+	
+	if img.shape[0] != resolution:
+		error('Input images must have the same width and height')
+	if resolution != 2 ** int(np.floor(np.log2(resolution))):
+		error('Input image resolution must be a power-of-two')
+	# if channels not in [1, 3]:
+	# 	error('Input images must be stored as RGB or grayscale')
+
+	# is_HWC = (channels == 3) and (img.shape[2] == 3)
+	is_HWC = False
+	with TFRecordExporter(tfrecord_dir, all_arr.shape[0]) as tfr:
+		order = tfr.choose_shuffled_order() if shuffle else np.arange(all_arr.shape[0])
+		for idx in range(order.size):
+			img = all_arr[order[idx]]
+			if channels == 1:
+				img = img[np.newaxis, :, :] # HW => CHW
+			elif is_HWC:
+				img = img.transpose([2, 0, 1]) # HWC => CHW
+			img = _resize_image(image=img, target=res)
+			img = np.asarray(img) 
+			tfr.add_image(img)
+
 
 
 
 def load_from_numpy(dataset_name):
-	filelist =  sorted(glob("/global/cscratch1/sd/rgupta2/backup/netcdf_256_resolution_2_channels/rbc_500/*.npy"))[:2]
+	filelist =  sorted(glob("/global/cscratch1/sd/rgupta2/backup/netcdf_256_resolution_2_channels/rbc_500/*.npy"))[0]
 	return filelist
 
 
@@ -41,6 +108,23 @@ class ImageData:
 		img = preprocess_fit_train_image(img, self.img_size)
 
 		return img
+
+
+
+
+class RBCData:
+
+	def __init__(self, img_size, num_channels):
+		self.img_size = img_size
+		self.channels = num_channels
+
+	def image_processing(self, filename):
+		data = np.load(filename.decode()).transpose(0,2,3,1)
+		data = tf.image.resize(data, size=[self.img_size, self.img_size], method=tf.image.ResizeMethod.BILINEAR)
+		# print("inside read_npy_file : ", type(data))
+		return data
+
+
 
 def adjust_dynamic_range(images):
 	drange_in = [0.0, 255.0]

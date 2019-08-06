@@ -22,17 +22,17 @@ def parse_args():
 	parser.add_argument('--draw', type=str, default='uncurated', help='[uncurated, style_mix, truncation_trick]')
 	parser.add_argument('--dataset', type=str, default= "FFHQ_128", help='The dataset name what you want to generate')
 
-	parser.add_argument('--iteration', type=int, default=50, help='The number of images used in the train phase')
-	parser.add_argument('--max_iteration', type=int, default=70, help='The total number of images')
+	parser.add_argument('--iteration', type=int, default=120, help='The number of images used in the train phase')
+	parser.add_argument('--max_iteration', type=int, default=2500, help='The total number of images')
 
-	parser.add_argument('--batch_size', type=int, default=4, help='The size of batch in the test phase')
+	parser.add_argument('--batch_size', type=int, default=1, help='The size of batch in the test phase')
 	parser.add_argument('--gpu_num', type=int, default=2, help='The number of gpu')
 
 	parser.add_argument('--progressive', type=str2bool, default=True, help='use progressive training')
 	parser.add_argument('--sn', type=str2bool, default=True, help='use spectral normalization')
 
-	parser.add_argument('--start_res', type=int, default=4, help='The number of starting resolution')
-	parser.add_argument('--img_size', type=int, default=1024, help='The target size of image')
+	parser.add_argument('--start_res', type=int, default=8, help='The number of starting resolution')
+	parser.add_argument('--img_size', type=int, default=128, help='The target size of image')
 	parser.add_argument('--test_num', type=int, default=100, help='The number of generating images in the test phase')
 
 	parser.add_argument('--input_channels', type=int, default=3, help='The number of input channels for the input real images')

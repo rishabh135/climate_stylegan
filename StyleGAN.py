@@ -1,4 +1,4 @@
-import time, re
+import time, re, sys
 from ops import *
 from utils import *
 import tensorflow
@@ -37,6 +37,9 @@ class StyleGAN(object):
 		self.resolutions = resolution_list(self.img_size) # [4, 8, 16, 32, 64, 128, 256, 512, 1024 ...]
 		self.featuremaps = featuremap_list(self.img_size) # [512, 512, 512, 512, 256, 128, 64, 32, 16 ...]
 
+		print("resolutions", self.resolutions)
+		print("feature maps", self.featuremaps)
+
 		if not self.progressive :
 			self.resolutions = [self.resolutions[-1]]
 			self.featuremaps = [self.featuremaps[-1]]
@@ -60,6 +63,9 @@ class StyleGAN(object):
 		self.batch_sizes = get_batch_sizes(self.gpu_num)
 
 		self.end_iteration = get_end_iteration(self.iteration, self.max_iteration, self.train_with_trans, self.resolutions, self.start_res)
+		
+
+		print( "self.end_iteration : ", self.end_iteration)
 
 		self.g_learning_rates = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
 		self.d_learning_rates = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
@@ -88,7 +94,7 @@ class StyleGAN(object):
 		self.sample_dir = os.path.join(self.sample_dir, self.model_dir)
 		check_folder(self.sample_dir)
 
-		print()
+		print("\n\n")
 
 		print("##### Information #####")
 		print("# dataset : ", self.dataset_name)
@@ -104,7 +110,7 @@ class StyleGAN(object):
 		print("# progressive training : ", self.progressive)
 		print("# spectral normalization : ", self.sn)
 
-
+		print("\n\n")
 
 	##################################################################################
 	# Generator
@@ -143,42 +149,57 @@ class StyleGAN(object):
 			if self.progressive :
 
 
-				if(self.rbc_data):
-					images_out = x
-				else:
-					images_out = torgb(x, res, input_channels=self.input_channels, sn=self.sn)
+				# if(self.rbc_data):
+				# 	images_out = x
+				# else:
+				
 				
 
+				images_out = torgb(x, res, input_channels=self.input_channels, sn=self.sn)
+				
+				print("@@ G_synthesis for images_out first :{} ".format( images_out.shape)) 
+				
 				
 				coarse_styles.pop(res, None)
 
 				# Coarse style [4 ~ 8]
 				# pose, hair, face shape
 				for res, n_f in coarse_styles.items():
+
+
 					x = synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=self.sn)
 
-				
-					if(self.rbc_data):
-						img = x
-					else:
-						img = torgb(x, res, self.input_channels, sn=self.sn)
+					print("@@ G_synthesis of x with  res: {}  x:{}  n_f : {} and w_broadcasted : {} ".format( res, x.shape, n_f, w_broadcasted.shape)) 
 
+					img = torgb(x, res, self.input_channels, sn=self.sn)
 
+					print("@@ G_synthesis after torgb  x:{}   input_channels:{} ".format( x.shape, self.input_channels)) 
+					
 				
 					images_out = upscale2d(images_out)
+
+					print("@@ G_synthesis after upscale2d  images_out {}   ".format( images_out.shape)) 
+					
 					images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
+
+					print("@@ G_synthesis after smooth_transition images_out {}   ".format( images_out.shape)) 
+					
 
 					layer_index += 2
 
+
+				print("########################\n\n")
 				# Middle style [16 ~ 32]
 				# facial features, eye
 				for res, n_f in middle_styles.items():
 					x = synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=self.sn)
-					if(self.rbc_data):
-						img = x
-					else:
-						img = torgb(x, res, self.input_channels,  sn=self.sn)
+					# if(self.rbc_data):
+					# 	img = x
+					# else:
 					
+					img = torgb(x, res, self.input_channels,  sn=self.sn)
+					
+					print("@@ G_synthesis after torgb  x:{}   input_channels:{} ".format( img.shape, self.input_channels)) 
 					images_out = upscale2d(images_out)
 					images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
 
@@ -189,10 +210,10 @@ class StyleGAN(object):
 				for res, n_f in fine_styles.items():
 					x = synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=self.sn)
 					
-					if(self.rbc_data):
-						img = x
-					else:
-						img = torgb(x, res, self.input_channels, sn=self.sn)
+					# if(self.rbc_data):
+					# 	img = x
+					# else:
+					img = torgb(x, res, self.input_channels, sn=self.sn)
 					
 					images_out = upscale2d(images_out)
 					images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
@@ -205,11 +226,13 @@ class StyleGAN(object):
 
 					layer_index += 2
 
-				if(self.rbc_data):
-					images_out = x
-				else:
-					images_out = torgb(x, resolutions[-1], self.input_channels, sn=self.sn)
-
+				# if(self.rbc_data):
+				# 	images_out = x
+				# else:
+				
+				images_out = torgb(x, resolutions[-1], self.input_channels, sn=self.sn)
+				print("@@ G_synthesis after torgb  images_rgb:{}   x:{} ".format( images_out.shape, x.shape)) 
+	
 			return images_out
 
 	def generator(self, z, alpha, target_img_size, is_training=True, reuse=tf.AUTO_REUSE):
@@ -225,6 +248,8 @@ class StyleGAN(object):
 			n_broadcast = len(resolutions) * 2
 			w_broadcasted = self.g_mapping(z, n_broadcast)
 
+			print("w_broadcasted : ", w_broadcasted.shape)
+
 			if is_training:
 				""" apply regularization techniques on training """
 				# update moving average of w
@@ -233,12 +258,18 @@ class StyleGAN(object):
 				# perform style mixing regularization
 				w_broadcasted = self.style_mixing_regularization(z, w_broadcasted, n_broadcast, resolutions)
 
+				print("w_broadcasted _ with _style _mixing :  ", w_broadcasted.shape)
+
 			else :
 				""" apply truncation trick on evaluation """
 				w_broadcasted = self.truncation_trick(n_broadcast, w_broadcasted, w_avg, self.truncation_psi)
 
 			""" synthesis layers """
+
+
 			x = self.g_synthesis(w_broadcasted, alpha, resolutions, featuremaps)
+
+			print("x after g_synthesis : ", x.shape)
 
 			return x
 
@@ -248,7 +279,7 @@ class StyleGAN(object):
 
 	def discriminator(self, x_init, alpha, target_img_size, reuse=tf.AUTO_REUSE):
 
-		print("tf.shape of x_init: ", tf.keras.backend.eval(tf.shape(x_init)))	 
+		# print("tf.shape of x_init: ", tf.keras.backend.eval(tf.shape(x_init)))	 
 		with tf.variable_scope("discriminator", reuse=reuse):
 			resolutions = resolution_list(target_img_size)
 			featuremaps = featuremap_list(target_img_size)
@@ -256,34 +287,45 @@ class StyleGAN(object):
 			r_resolutions = resolutions[::-1]
 			r_featuremaps = featuremaps[::-1]
 
-			print("inside discriminator_block : with x_init : ", x_init.shape)
+			print("inside stylegan_dis_block: ", x_init.shape)
 			
 			
-			""" set inputs """
-			if(self.rbc_data):
-				x = x_init
-			else:
-				x = fromrgb(x_init, r_resolutions[0], r_featuremaps[0], self.sn)
-				print("scope of x after fromrgb: ", x.name)	
-				print("shape of x after fromrgb: ", tf.keras.backend.eval(tf.shape(x)))
+			# """ set inputs """
+			# if(self.rbc_data):
+			# 	x = x_init
+			# else:
+				
+			x = fromrgb(x_init, r_resolutions[0], r_featuremaps[0], self.sn)
+				# print("scope of x after fromrgb: ", x.name)	
+				# print("shape of x after fromrgb: ", tf.keras.backend.eval(tf.shape(x)))
 
 			""" stack discriminator blocks """
 			for index, (res, n_f) in enumerate(zip(r_resolutions[:-1], r_featuremaps[:-1])):
 				res_next = r_resolutions[index + 1]
 				n_f_next = r_featuremaps[index + 1]
 
-				print("tf.shape of x inside stack discriminator blocks: with index {} res: {} is {}".format(index, res, tf.keras.backend.eval(tf.shape(x)))) 
+				print("# tf.shape of x with index {} res: {} is {} and n_f : {} and n_f_next : {} ".format(index, res, x.shape, n_f, n_f_next)) 
 				x = discriminator_block(x, res, n_f, n_f_next, self.sn)
 
 				if self.progressive :
 					x_init = downscale2d(x_init)
 
-					if(self.rbc_data):
-						y = x_init		
-					else:
-						y = fromrgb(x_init, res_next, n_f_next, self.sn)
+					# if(self.rbc_data):
+					# 	y = x_init		
+					# else:
 					
+					y = fromrgb(x_init, res_next, n_f_next, self.sn)
+
+					
+					print("########### tf.shape of x before smooth_transition  is {}".format( x.shape))
+					print("########### tf.shape of y before smooth_transition  is {}".format( y.shape))
+					 
+
 					x = smooth_transition(y, x, res, r_resolutions[0], alpha)
+
+					print("########### tf.shape of x after smooth_transition   {}".format(x.shape))
+					print("########### tf.shape of y after smooth_transition   {} ".format( y.shape))
+					
 
 			""" last block """
 			res = r_resolutions[-1]
@@ -291,6 +333,8 @@ class StyleGAN(object):
 
 			logit = discriminator_last_block(x, res, n_f, n_f, self.sn)
 
+			print("########### after logists calculated logits: {}".format( x.shape))
+					
 			return logit
 
 	##################################################################################
@@ -382,15 +426,39 @@ class StyleGAN(object):
 
 
 								if(self.rbc_data):
+									npy_file = self.dataset
+									num_features = 2 * 256 * 256
+									dtype = tf.float32
+									header_offset = npy_header_offset(npy_file)
+									dataset = tf.data.FixedLengthRecordDataset([npy_file], num_features * dtype.size, header_bytes=header_offset)
+									dataset = dataset.map(lambda s: tf.image.resize( tf.transpose(tf.reshape(tf.decode_raw(s, dtype), (2,256,256,)) , perm=[1,2,0]), size=[res, res], method=tf.image.ResizeMethod.BILINEAR)) 
 
-									train_dataset = tf.data.Dataset.from_tensor_slices(self.dataset)	
-									inputs = train_dataset.map(lambda item: tf.py_func(read_npy_file, [item, res], [tf.float32,]))
+									print("dataset : ", type(dataset))
+
+
+
+									# # rbc_class = RBCData(res, self.input_channels)
+									# train_dataset = tf.data.Dataset.from_tensor_slices(self.dataset)	
+									
+
+
+									# inputs = train_dataset.apply(map_and_batch(rbc_class.image_processing, batch_size, num_parallel_batches=16, drop_remainder=True)). \
+									# 	apply(prefetch_to_device(gpu_device, None))
+									
+
+
+									# inputs = train_dataset.map(lambda item: tf.py_func(read_npy_file, [item, res], [tf.float32, ]))
 						
-									inputs = inputs.batch(16).prefetch(buffer_size= tf.data.experimental.AUTOTUNE)
+									inputs = dataset.batch(batch_size).prefetch(buffer_size= tf.data.experimental.AUTOTUNE)
+									
 									inputs_iterator = inputs.make_one_shot_iterator()
-									images_from_numpy = inputs_iterator.get_next()
-									real_img  = tf.reshape( images_from_numpy ,(-1,self.img_size,self.img_size, self.input_channels))
-
+									real_img  = inputs_iterator.get_next()
+									print("real img: ",type(real_img))									
+									print("real_img.shape: ",real_img.shape)
+									# real_img.set_shape([None, self.img_size, None, self.input_channels])
+									# real_img  = tf.reshape( real_img ,(None, res , res, self.input_channels))
+	
+	
 
 									# inputs = tf.data.Dataset.from_tensor_slices(self.dataset)
 									# ######################################################################################
@@ -416,14 +484,28 @@ class StyleGAN(object):
 									real_img = inputs_iterator.get_next()
 
 
+
 								z = tf.random_normal(shape=[batch_size, self.z_dim])
 
-								fake_img = self.generator(z, alpha, res)
 								
-								if(not self.rbc_data):
-									real_img = smooth_crossfade(real_img, alpha)
+
+								fake_img = self.generator(z, alpha, res)
+								print("fake_img: ",fake_img.shape)
+								
+
+								# if(not self.rbc_data):
+								real_img = smooth_crossfade(real_img, alpha)
+
+
+								print("real_img: ",real_img.shape)
 
 								real_logit = self.discriminator(real_img, alpha, res)
+
+
+
+
+								print("#########################\n\n\n\n")
+								print("starting fake logits now")
 								fake_logit = self.discriminator(fake_img, alpha, res)
 
 								# compute loss
@@ -496,20 +578,33 @@ class StyleGAN(object):
 
 		# restore check-point if it exits
 		could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+		
+		print("checkpoint_counter: ", checkpoint_counter)
+
 		if could_load:
 
 			start_res_idx = get_checkpoint_res(checkpoint_counter, self.batch_sizes, self.iteration,
 											   self.start_res, self.img_size, self.gpu_num,
 											   self.end_iteration, self.train_with_trans)
 
+		
+			print("start_res_idx inside could load :" , start_res_idx)
+
 			if not self.progressive :
 				start_res_idx = 0
 
 			start_batch_idx = checkpoint_counter
 
+			print("start_batch_idx inside could load :" , start_batch_idx)
+			
 			for res_idx in range(self.resolutions.index(self.start_res), start_res_idx) :
+
+				print("res_idx : ", res_idx)
+
 				res = self.resolutions[res_idx]
 				batch_size_per_res = self.batch_sizes.get(res, self.batch_size_base) * self.gpu_num
+
+				print("batch_size_per_res: ", batch_size_per_res)
 
 				if self.train_with_trans[res]:
 					if res == self.img_size :
@@ -536,7 +631,12 @@ class StyleGAN(object):
 
 		start_time = time.time()
 
+
+
+
+
 		for current_res_num in range(start_res_idx, len(self.resolutions)):
+
 
 			current_res = self.resolutions[current_res_num]
 			batch_size_per_res = self.batch_sizes.get(current_res, self.batch_size_base) * self.gpu_num
@@ -580,7 +680,7 @@ class StyleGAN(object):
 				self.experiment.log_metric("g_loss",g_loss,step=counter)
 
 
-				print("Current res: [%4d] [%6d/%6d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
+				print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
 					  % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss))
 
 				if np.mod(idx + 1, self.print_freq[current_res]) == 0:
@@ -588,7 +688,7 @@ class StyleGAN(object):
 					manifold_h = int(np.floor(np.sqrt(batch_size_per_res)))
 					manifold_w = int(np.floor(np.sqrt(batch_size_per_res)))
 
-					self.experiment.log_image( merge(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w] ), name="fake images generated during training")
+					self.experiment.log_image( merge(samples[:64, :, :, :], [manifold_h, manifold_w] ), name="fake images generated during training")
 					save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
 								'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1))
 
