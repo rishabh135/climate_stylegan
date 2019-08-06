@@ -2,8 +2,10 @@ import time, re, sys
 from ops import *
 from utils import *
 import tensorflow
-print(tensorflow.__version__)
 
+
+
+print(tensorflow.__version__)
 
 from tensorflow.contrib.data import prefetch_to_device, shuffle_and_repeat, map_and_batch
 import numpy as np
@@ -86,7 +88,7 @@ class StyleGAN(object):
 
 		if(self.rbc_data):
 			self.dataset = load_from_numpy(self.dataset_name)
-			self.dataset_num = len(self.dataset)
+			self.dataset_num = 3500 * len(self.dataset)
 		else:
 			self.dataset = load_data(dataset_name=self.dataset_name)
 			self.dataset_num = len(self.dataset)
@@ -426,12 +428,13 @@ class StyleGAN(object):
 
 
 								if(self.rbc_data):
-									npy_file = self.dataset
+									npy_file = self.dataset[0]
 									num_features = 2 * 256 * 256
 									dtype = tf.float32
 									header_offset = npy_header_offset(npy_file)
-									dataset = tf.data.FixedLengthRecordDataset([npy_file], num_features * dtype.size, header_bytes=header_offset)
-									dataset = dataset.map(lambda s: tf.image.resize( tf.transpose(tf.reshape(tf.decode_raw(s, dtype), (2,256,256,)) , perm=[1,2,0]), size=[res, res], method=tf.image.ResizeMethod.BILINEAR)) 
+									dataset = tf.data.FixedLengthRecordDataset(self.dataset, num_features * dtype.size, header_bytes=header_offset)
+									dataset = dataset.map(lambda s: tf.image.resize( tf.transpose(tf.reshape(tf.decode_raw(s, dtype), [2,256,256]) , perm=[1,2,0]), size=[res, res], method=tf.image.ResizeMethod.BILINEAR), num_parallel_calls=16)
+ 
 
 									print("dataset : ", type(dataset))
 
@@ -449,15 +452,17 @@ class StyleGAN(object):
 
 									# inputs = train_dataset.map(lambda item: tf.py_func(read_npy_file, [item, res], [tf.float32, ]))
 						
-									inputs = dataset.batch(batch_size).prefetch(buffer_size= tf.data.experimental.AUTOTUNE)
+									inputs = dataset.apply(shuffle_and_repeat(self.dataset_num)).batch(batch_size, drop_remainder=True).apply(prefetch_to_device(gpu_device, None))
+
+									# prefetch(buffer_size= tf.data.experimental.AUTOTUNE)
 									
 									inputs_iterator = inputs.make_one_shot_iterator()
 									real_img  = inputs_iterator.get_next()
+									real_img  = tf.reshape( real_img ,(batch_size, res , res, self.input_channels))
 									print("real img: ",type(real_img))									
 									print("real_img.shape: ",real_img.shape)
 									# real_img.set_shape([None, self.img_size, None, self.input_channels])
-									# real_img  = tf.reshape( real_img ,(None, res , res, self.input_channels))
-	
+									
 	
 
 									# inputs = tf.data.Dataset.from_tensor_slices(self.dataset)
@@ -482,7 +487,8 @@ class StyleGAN(object):
 									# When using dataset.prefetch, use buffer_size=None to let it detect optimal buffer size
 									inputs_iterator = inputs.make_one_shot_iterator()
 									real_img = inputs_iterator.get_next()
-
+									print("real img: ",type(real_img))									
+									print("real_img.shape: ",real_img.shape)
 
 
 								z = tf.random_normal(shape=[batch_size, self.z_dim])
@@ -571,7 +577,7 @@ class StyleGAN(object):
 
 		# saver to save model
 		self.saver = tf.train.Saver(max_to_keep=10)
-		self.experiment.set_model_graph(self.sess.graph)
+		# self.experiment.set_model_graph(self.sess.graph)
 
 		# summary writer
 		self.writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir, self.sess.graph)
@@ -688,9 +694,16 @@ class StyleGAN(object):
 					manifold_h = int(np.floor(np.sqrt(batch_size_per_res)))
 					manifold_w = int(np.floor(np.sqrt(batch_size_per_res)))
 
-					self.experiment.log_image( merge(samples[:64, :, :, :], [manifold_h, manifold_w] ), name="fake images generated during training")
-					save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
-								'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1))
+
+					if(self.rbc_data):
+						exp_figure = merge(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w] )
+						self.experiment.log_figure(figure=exp_figure,  figure_name="fake images at {} at index {}".format(current_res, idx+1))
+
+
+					else:		
+						self.experiment.log_image( merge(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w], current_res ), name="fake images generated during training")
+						save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
+									'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.rbc_data)
 
 				if np.mod(idx + 1, self.save_freq[current_res]) == 0:
 					self.save(self.checkpoint_dir, counter)

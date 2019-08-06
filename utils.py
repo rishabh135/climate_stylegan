@@ -1,4 +1,7 @@
-import numpy as np
+
+from __future__ import print_function
+import os, sys
+from PIL import Image
 import os
 from glob import glob
 from ops import lerp
@@ -19,21 +22,21 @@ def _resize_image(image, target):
 
 
 def npy_header_offset(npy_path):
-    with open(str(npy_path), 'rb') as f:
-        if f.read(6) != b'\x93NUMPY':
-            raise ValueError('Invalid NPY file.')
-        version_major, version_minor = f.read(2)
-        if version_major == 1:
-            header_len_size = 2
-        elif version_major == 2:
-            header_len_size = 4
-        else:
-            raise ValueError('Unknown NPY file version {}.{}.'.format(version_major, version_minor))
-        header_len = sum(b << (8 * i) for i, b in enumerate(f.read(header_len_size)))
-        header = f.read(header_len)
-        if not header.endswith(b'\n'):
-            raise ValueError('Invalid NPY file.')
-        return f.tell()
+	with open(str(npy_path), 'rb') as f:
+		if f.read(6) != b'\x93NUMPY':
+			raise ValueError('Invalid NPY file.')
+		version_major, version_minor = f.read(2)
+		if version_major == 1:
+			header_len_size = 2
+		elif version_major == 2:
+			header_len_size = 4
+		else:
+			raise ValueError('Unknown NPY file version {}.{}.'.format(version_major, version_minor))
+		header_len = sum(b << (8 * i) for i, b in enumerate(f.read(header_len_size)))
+		header = f.read(header_len)
+		if not header.endswith(b'\n'):
+			raise ValueError('Invalid NPY file.')
+		return f.tell()
 
 
 def read_npy_file(item, res):
@@ -91,7 +94,7 @@ def create_from_numpy(tfrecord_dir, numpy_filename, shuffle, res, channels):
 
 
 def load_from_numpy(dataset_name):
-	filelist =  sorted(glob("/global/cscratch1/sd/rgupta2/backup/netcdf_256_resolution_2_channels/rbc_500/*.npy"))[0]
+	filelist =  sorted(glob("/global/cscratch1/sd/rgupta2/backup/netcdf_256_resolution_2_channels/rbc_500/*.npy"))
 	return filelist
 
 
@@ -164,9 +167,9 @@ def load_data(dataset_name) :
 
 	return x
 
-def save_images(images, size, image_path):
+def save_images(images, size, image_path, rbc_data, current_res):
 	# return imsave(inverse_transform(images), size, image_path)
-	return imsave(images, size, image_path)
+	return imsave(images, size, image_path, rbc_data, current_res)
 
 def merge(images, size):
 	h, w = images.shape[1], images.shape[2]
@@ -179,13 +182,41 @@ def merge(images, size):
 
 	return img
 
-def imsave(images, size, path):
+def imsave(images, size, path, rbc_data, current_res):
 	# return scipy.misc.imsave(path, merge(images, size))
 
-	images = merge(images, size)
-	images = post_process_generator_output(images)
-	images = cv2.cvtColor(images.astype('uint8'), cv2.COLOR_RGB2BGR)
-	cv2.imwrite(path, images)
+
+
+	
+
+	if(rbc_data):
+
+		h, w = images.shape[1], images.shape[2]
+		c = images.shape[3]
+		fig=plt.figure(figsize=(10, 2))
+		for idx, image in enumerate(images):
+
+			image = post_process_generator_output(image)
+			ux_data_plot, uy_data_plot = image[:,:,0], image[:,:,1]
+
+			plt.clf()
+			fig.add_subplot(2, 1, 1)
+			plt.imshow(ux_data_plot)
+			plt.xticks([])
+			plt.yticks([])
+			fig.add_subplot(2, 1, 2)
+			plt.imshow(uy_data_plot)
+			plt.xticks([])
+			plt.yticks([])
+			plt.savefig(os.path.join(path, "at_{}_snapshot_{}.png".format(current_res, idx)), dpi = 400)
+	
+		return plt
+
+	else:
+		images = merge(images, size)
+		images = post_process_generator_output(images)
+		images = cv2.cvtColor(images.astype('uint8'), cv2.COLOR_RGB2BGR)
+		cv2.imwrite(path, images)
 
 def inverse_transform(images):
 	return (images+1.)/2.
