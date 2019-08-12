@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import tensorflow.contrib.slim as slim
 import cv2
 
+import radialProfile
 
 def _resize_image(image, target):
 	return cv2.resize(image, dsize=(target, target), interpolation=cv2.INTER_AREA)
@@ -196,13 +197,27 @@ def merge(images, size):
 
 	return img
 
+def tke2spectrum(tke, res, dash=None):
+	"""Convert TKE field to spectrum"""
+	sp = np.fft.fft2(tke.reshape(res,res))
+	sp = np.fft.fftshift(sp)
+	sp = np.real(sp*np.conjugate(sp))
+	sp1D = radialProfile.azimuthalAverage(sp)
+	return sp1D
 
 
-def get_turbulent_kinetic_energy(images, number_of_images, res, dataset_location, experiment):
+	# if dash == None:
+	# 	p1, = 
+	# else:
+	# 	p1, = plt.plot(sp1D, ls, linewidth=2, dashes=dash)
+	# return p1
 
-	# 	E_x(x, y) = U_x(x, y) - \intgeral_time{U_x(x, y)}
-	# 	E_y(x, y) = U_y(x, y) - \intgeral_time{U_y(x, y)}
-	# 	TKE**2 = E_x**2 + E_y**2
+
+
+
+def get_turbulent_kinetic_energy(images, number_of_images, res, save_path, dataset_location, experiment):
+
+
 
 	load_path = os.path.join(dataset_location + "tke_average_energies.npy")
 
@@ -218,21 +233,58 @@ def get_turbulent_kinetic_energy(images, number_of_images, res, dataset_location
 	idx = 1
 	for __ , image in enumerate(images):
 
-		fig2.add_subplot( 1, number_of_images, idx)
+		fig2.add_subplot( 3, number_of_images, idx)
 		idx += 1
-		ux_current, uy_current = image[:,:,0], image[:,:,1] 
-		tke = (ux_current - ux_average_over_time)**2 + (uy_current - uy_average_over_time)**2
-		plt.imshow(tke)
 
+
+		"""
+
+		calculating turbulent kinetic energy over all timesteps from 10,000 to 15,0000 as training steps
+		
+
+		 	E_x(x, y) = U_x(x, y) - \intgeral_time{U_x(x, y)}
+		 	E_y(x, y) = U_y(x, y) - \intgeral_time{U_y(x, y)}
+		 	TKE**2 = E_x**2 + E_y**2
+
+
+		"""
+		ux_current, uy_current = image[:,:,0], image[:,:,1]
+		tke = np.sqrt((ux_current - ux_average_over_time)**2 + (uy_current - uy_average_over_time)**2)
+		plt.imshow(tke)		
+		plt.title('turbulent kinetic energy at  res : {}'.format(res))
+
+
+
+
+		fig2.add_subplot( 3, number_of_images, idx)
+		idx += 1
+		plt.hist(tke.flatten(), bins=100)
+		plt.title('tke bins at 100 bins at res {}'.format(res))
+
+
+
+
+		fig2.add_subplot( 3, number_of_images, idx)
+		idx += 1
+		sp1D = tke2spectrum(tke,res)
+		plt.plot(sp1D, 'r--', linewidth=2)
+		plt.title('sp1D  data at res {}'.format(res))
+
+		
 
 	plt.subplots_adjust(hspace=0.1, wspace=0.05)
-	fig2.tight_layout()	
-	experiment.log_figure(figure=plt,  figure_name="Total Kinetic energy at res {} ".format(res, idx+1))
+	fig2.tight_layout()
+
+	indx = re.findall('\d+', save_path)[-1]
+	path = os.path.join( os.path.dirname(save_path), "tke_plots_for_res_{}_idx_{}.jpg".format(res, indx)) 	
+	plt.savefig(path, dpi = 200)
+
+	experiment.log_figure(figure=plt,  figure_name="Turbulent Kinetic energy at res {} and index {} ".format(res, indx))
 	
 
 
 
-def imsave(images, size, path, rbc_data, current_res, dataset_location="", experiment=None, num_images_to_be_shown=4):
+def imsave(images, size, path, rbc_data, current_res, dataset_location="", experiment=None, num_images_to_be_shown=4 ):
 	# return scipy.misc.imsave(path, merge(images, size))
 
 	if(rbc_data):
@@ -242,7 +294,7 @@ def imsave(images, size, path, rbc_data, current_res, dataset_location="", exper
 		
 		number_of_images = min(images.shape[0], num_images_to_be_shown)
 
-		get_turbulent_kinetic_energy(images[: number_of_images, :,:,:], number_of_images, current_res, dataset_location, experiment)
+		get_turbulent_kinetic_energy(images[: number_of_images, :,:,:], number_of_images, current_res, path, dataset_location, experiment)
 
 
 		fig=plt.figure(figsize=(6.4, 4.8))		
@@ -262,15 +314,19 @@ def imsave(images, size, path, rbc_data, current_res, dataset_location="", exper
 			plt.imshow(ux_data_plot)
 			plt.xticks([])
 			plt.yticks([])
+			plt.title('fake ux_data at res {}'.format(current_res))
+			
 			fig.add_subplot( 2, number_of_images, idx)
 			idx += 1
 			plt.imshow(uy_data_plot)
 			plt.xticks([])
 			plt.yticks([])
-			plt.savefig(path, dpi = 200)
+			plt.title('fake uy_data at res {}'.format(current_res))
+
 
 		plt.subplots_adjust(hspace=0.1, wspace=0.05)
 		fig.tight_layout()
+		plt.savefig(path, dpi = 200)
 		return plt	
 	
 	else:
