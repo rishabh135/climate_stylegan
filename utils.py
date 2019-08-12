@@ -204,12 +204,10 @@ def get_turbulent_kinetic_energy(images, number_of_images, res, dataset_location
 	# 	E_y(x, y) = U_y(x, y) - \intgeral_time{U_y(x, y)}
 	# 	TKE**2 = E_x**2 + E_y**2
 
-
-
 	load_path = os.path.join(dataset_location + "tke_average_energies.npy")
 
 
-	my_dict_back = np.load(load_path)
+	my_dict_back = np.load(load_path, allow_pickle=True)
 	
 	ux_average_over_time = my_dict_back.item()["{}_ux".format(res)]
 	uy_average_over_time = my_dict_back.item()["{}_uy".format(res)]
@@ -220,14 +218,16 @@ def get_turbulent_kinetic_energy(images, number_of_images, res, dataset_location
 	idx = 1
 	for __ , image in enumerate(images):
 
-		fig.add_subplot( 1, number_of_images, idx)
+		fig2.add_subplot( 1, number_of_images, idx)
 		idx += 1
 		ux_current, uy_current = image[:,:,0], image[:,:,1] 
 		tke = (ux_current - ux_average_over_time)**2 + (uy_current - uy_average_over_time)**2
-		print(tke.shape)
-		plt.plot(tke)
-	
-	experiment.log_figure(figure=plt,  figure_name="Total Kinetic energy at res {} ".format(current_res, idx+1))
+		plt.imshow(tke)
+
+
+	plt.subplots_adjust(hspace=0.1, wspace=0.05)
+	fig2.tight_layout()	
+	experiment.log_figure(figure=plt,  figure_name="Total Kinetic energy at res {} ".format(res, idx+1))
 	
 
 
