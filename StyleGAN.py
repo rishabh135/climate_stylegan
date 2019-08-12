@@ -60,6 +60,7 @@ class StyleGAN(object):
 
 		self.batch_size_base = 4
 		self.learning_rate_base = 0.001
+		self.num_images_to_be_shown = 4
 
 		self.train_with_trans = {4: False, 8: False, 16: True, 32: True, 64: True, 128: True, 256: True, 512: True, 1024: True}
 		self.batch_sizes = get_batch_sizes(self.gpu_num)
@@ -74,7 +75,10 @@ class StyleGAN(object):
 
 		self.sn = args.sn
 
-		self.print_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 3000, 256: 5000, 512: 10000, 1024: 10000}
+		# self.print_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 3000, 256: 5000, 512: 10000, 1024: 10000}
+
+		self.print_freq = {4: 1000, 8: 10, 16: 10, 32: 10, 64: 10, 128: 30, 256: 10, 512: 10000, 1024: 10000}
+
 		self.save_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 3000, 256: 5000, 512: 10000, 1024: 10000}
 
 		self.print_freq.update((x, y // self.gpu_num) for x, y in self.print_freq.items())
@@ -85,9 +89,10 @@ class StyleGAN(object):
 
 
 		self.rbc_data = self.dataset_name.startswith("rbc")
+		self.dataset_location = args.dataset_location
 
 		if(self.rbc_data):
-			self.dataset = load_from_numpy(self.dataset_name)
+			self.dataset = load_from_numpy(self.dataset_name, self.dataset_location)
 			self.dataset_num = 3500 * len(self.dataset)
 		else:
 			self.dataset = load_data(dataset_name=self.dataset_name)
@@ -393,12 +398,13 @@ class StyleGAN(object):
 			self.d_summary_per_res = {}
 			self.g_summary_per_res = {}
 			self.train_fake_images = {}
+			self.real_images = {}
 
 			for res in self.resolutions[self.resolutions.index(self.start_res):]:
 				g_loss_per_gpu = []
 				d_loss_per_gpu = []
 				train_fake_images_per_gpu = []
-
+				real_images_per_gpu = []
 				batch_size = self.batch_sizes.get(res, self.batch_size_base)
 				global_step = tf.get_variable('global_step_{}'.format(res), shape=[], dtype=tf.float32,
 											  initializer=tf.initializers.zeros(),
@@ -428,6 +434,12 @@ class StyleGAN(object):
 
 
 								if(self.rbc_data):
+									"""
+									npy_file is just to calculate the common header across all the files, in self.dataset 
+									self.dataset = list of chosen files
+									num_features = constant , the dimension of each sample from the index file
+									"""
+									
 									npy_file = self.dataset[0]
 									num_features = 2 * 256 * 256
 									dtype = tf.float32
@@ -520,6 +532,7 @@ class StyleGAN(object):
 								d_loss_per_gpu.append(d_loss)
 								g_loss_per_gpu.append(g_loss)
 								train_fake_images_per_gpu.append(fake_img)
+								real_images_per_gpu.append(real_img)
 
 				print("Create graph for {} resolution".format(res))
 
@@ -554,6 +567,7 @@ class StyleGAN(object):
 
 				self.train_fake_images[res] = tf.concat(train_fake_images_per_gpu, axis=0)
 
+				self.real_images[res] = tf.concat(real_images_per_gpu, axis=0)
 				""" Summary """
 				self.alpha_summary_per_res[res] = tf.summary.scalar("alpha_{}".format(res), alpha)
 
@@ -696,12 +710,12 @@ class StyleGAN(object):
 
 
 					if(self.rbc_data):
-						exp_figure = merge(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w] )
+						exp_figure = imsave(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],  './{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.rbc_data, current_res, self.dataset_location, self.experiment, self.num_images_to_be_shown )
 						self.experiment.log_figure(figure=exp_figure,  figure_name="fake images at {} at index {}".format(current_res, idx+1))
 
 
 					else:		
-						self.experiment.log_image( merge(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w], current_res ), name="fake images generated during training")
+						self.experiment.log_image( (samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w], current_res ), name="fake images generated during training")
 						save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
 									'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.rbc_data)
 

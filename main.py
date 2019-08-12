@@ -52,6 +52,12 @@ def parse_args():
 	parser.add_argument('--sample_dir', type=str, default='../stored_outputs/samples',
 						help='Directory name to save the samples on training')
 
+
+	parser.add_argument('--dataset_location', type=str, default="/global/cscratch1/sd/rgupta2/backup/netcdf_normalized_std/rbc_500/",
+						help='dataset_directory')
+
+
+
 	return check_args(parser.parse_args())
 
 """checking arguments"""

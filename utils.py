@@ -12,6 +12,10 @@ import tensorflow as tf
 # import tensorflow_datasets as tfds
 import scipy
 
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
+
 import tensorflow.contrib.slim as slim
 import cv2
 
@@ -93,8 +97,18 @@ def create_from_numpy(tfrecord_dir, numpy_filename, shuffle, res, channels):
 
 
 
-def load_from_numpy(dataset_name):
-	filelist =  sorted(glob("/global/cscratch1/sd/rgupta2/backup/netcdf_256_resolution_2_channels/rbc_500/*.npy"))
+def load_from_numpy(dataset_name, dataset_location):
+	# filelist = [] 
+
+	"""
+	filelist = hacky way of selecting all numpy files with basename starting with integers
+	"""
+									
+	filelist = sorted(glob("{}/*.npy".format(dataset_location)))[:-1]
+	# for file in tmp_list:
+	# 	if re.match("^\d", file):
+	# 		filelist.append(file)
+	# print(filelist)
 	return filelist
 
 
@@ -182,36 +196,83 @@ def merge(images, size):
 
 	return img
 
-def imsave(images, size, path, rbc_data, current_res):
-	# return scipy.misc.imsave(path, merge(images, size))
+
+
+def get_turbulent_kinetic_energy(images, number_of_images, res, dataset_location, experiment):
+
+	# 	E_x(x, y) = U_x(x, y) - \intgeral_time{U_x(x, y)}
+	# 	E_y(x, y) = U_y(x, y) - \intgeral_time{U_y(x, y)}
+	# 	TKE**2 = E_x**2 + E_y**2
 
 
 
+	load_path = os.path.join(dataset_location + "tke_average_energies.npy")
+
+
+	my_dict_back = np.load(load_path)
 	
+	ux_average_over_time = my_dict_back.item()["{}_ux".format(res)]
+	uy_average_over_time = my_dict_back.item()["{}_uy".format(res)]
+
+	fig2=plt.figure()	
+	
+
+	idx = 1
+	for __ , image in enumerate(images):
+
+		fig.add_subplot( 1, number_of_images, idx)
+		idx += 1
+		ux_current, uy_current = image[:,:,0], image[:,:,1] 
+		tke = (ux_current - ux_average_over_time)**2 + (uy_current - uy_average_over_time)**2
+		print(tke.shape)
+		plt.plot(tke)
+	
+	experiment.log_figure(figure=plt,  figure_name="Total Kinetic energy at res {} ".format(current_res, idx+1))
+	
+
+
+
+def imsave(images, size, path, rbc_data, current_res, dataset_location="", experiment=None, num_images_to_be_shown=4):
+	# return scipy.misc.imsave(path, merge(images, size))
 
 	if(rbc_data):
 
 		h, w = images.shape[1], images.shape[2]
 		c = images.shape[3]
-		fig=plt.figure(figsize=(10, 2))
-		for idx, image in enumerate(images):
+		
+		number_of_images = min(images.shape[0], num_images_to_be_shown)
 
-			image = post_process_generator_output(image)
+		get_turbulent_kinetic_energy(images[: number_of_images, :,:,:], number_of_images, current_res, dataset_location, experiment)
+
+
+		fig=plt.figure(figsize=(6.4, 4.8))		
+		idx=1
+		for __, image in enumerate(images):
+
+			if(idx > number_of_images*2):
+				break;
+
+			# image = post_process_generator_output(image)
 			ux_data_plot, uy_data_plot = image[:,:,0], image[:,:,1]
 
-			plt.clf()
-			fig.add_subplot(2, 1, 1)
+			
+
+			fig.add_subplot(  2, number_of_images, idx)
+			idx += 1
 			plt.imshow(ux_data_plot)
 			plt.xticks([])
 			plt.yticks([])
-			fig.add_subplot(2, 1, 2)
+			fig.add_subplot( 2, number_of_images, idx)
+			idx += 1
 			plt.imshow(uy_data_plot)
 			plt.xticks([])
 			plt.yticks([])
-			plt.savefig(os.path.join(path, "at_{}_snapshot_{}.png".format(current_res, idx)), dpi = 400)
-	
-		return plt
+			plt.savefig(path, dpi = 200)
 
+		plt.subplots_adjust(hspace=0.1, wspace=0.05)
+		fig.tight_layout()
+		return plt	
+	
 	else:
 		images = merge(images, size)
 		images = post_process_generator_output(images)
