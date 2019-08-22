@@ -16,6 +16,8 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
+plt.rcParams.update({'font.size': 4})
+
 import tensorflow.contrib.slim as slim
 import cv2
 
@@ -24,6 +26,20 @@ import radialProfile
 def _resize_image(image, target):
 	return cv2.resize(image, dsize=(target, target), interpolation=cv2.INTER_AREA)
 
+
+# import kornia
+# def divergence(preds):
+# 	#preds: batch_size*output_steps*2*H*W
+# 	preds_u = preds[:,:,0]
+# 	preds_v = preds[:,:,1]
+# 	u = torch.from_numpy(preds_u).float().to(device)
+# 	v = torch.from_numpy(preds_v).float().to(device)
+# 	#Sobolev gradients
+# 	field_grad = kornia.filters.SpatialGradient()
+# 	u_x = field_grad(u)[:,:,0]
+# 	v_y = field_grad(v)[:,:,1]
+# 	div = torch.mean(torch.abs(v_y + u_x), dim = (0,2,3)).cpu().data.numpy()
+# 	return div
 
 
 def npy_header_offset(npy_path):
@@ -130,17 +146,17 @@ class ImageData:
 
 
 
-class RBCData:
+# class RBCData:
 
-	def __init__(self, img_size, num_channels):
-		self.img_size = img_size
-		self.channels = num_channels
+# 	def __init__(self, img_size, num_channels):
+# 		self.img_size = img_size
+# 		self.channels = num_channels
 
-	def image_processing(self, filename):
-		data = np.load(filename.decode()).transpose(0,2,3,1)
-		data = tf.image.resize(data, size=[self.img_size, self.img_size], method=tf.image.ResizeMethod.BILINEAR)
-		# print("inside read_npy_file : ", type(data))
-		return data
+# 	def image_processing(self, filename):
+# 		data = np.load(filename.decode()).transpose(0,2,3,1)
+# 		data = tf.image.resize(data, size=[self.img_size, self.img_size], method=tf.image.ResizeMethod.BILINEAR)
+# 		# print("inside read_npy_file : ", type(data))
+# 		return data
 
 
 
@@ -215,7 +231,7 @@ def tke2spectrum(tke, res, dash=None):
 
 
 
-def get_turbulent_kinetic_energy(images, number_of_images, res, save_path, dataset_location, experiment):
+def get_turbulent_kinetic_energy(images, number_of_images, res, save_path, dataset_location, experiment, real_images):
 
 
 
@@ -227,14 +243,11 @@ def get_turbulent_kinetic_energy(images, number_of_images, res, save_path, datas
 	ux_average_over_time = my_dict_back.item()["{}_ux".format(res)]
 	uy_average_over_time = my_dict_back.item()["{}_uy".format(res)]
 
-	fig2=plt.figure()	
+	fig2=plt.figure(figsize=(10,3))	
 	
 
 	idx = 1
-	for __ , image in enumerate(images):
-
-		fig2.add_subplot( 3, number_of_images, idx)
-		idx += 1
+	for ii , image in enumerate(images):
 
 
 		"""
@@ -242,49 +255,340 @@ def get_turbulent_kinetic_energy(images, number_of_images, res, save_path, datas
 		calculating turbulent kinetic energy over all timesteps from 10,000 to 15,0000 as training steps
 		
 
-		 	E_x(x, y) = U_x(x, y) - \intgeral_time{U_x(x, y)}
-		 	E_y(x, y) = U_y(x, y) - \intgeral_time{U_y(x, y)}
-		 	TKE**2 = E_x**2 + E_y**2
+			E_x(x, y) = U_x(x, y) - \intgeral_time{U_x(x, y)}
+			E_y(x, y) = U_y(x, y) - \intgeral_time{U_y(x, y)}
+			TKE**2 = E_x**2 + E_y**2
 
 
 		"""
-		ux_current, uy_current = image[:,:,0], image[:,:,1]
+
+
+		fig2.add_subplot( number_of_images, 4, idx )
+		idx += 1
+		ux_current, uy_current = image[:,:,0], image[:,:,1]		
 		tke = np.sqrt((ux_current - ux_average_over_time)**2 + (uy_current - uy_average_over_time)**2)
 		plt.imshow(tke)		
-		plt.title('turbulent kinetic energy at  res : {}'.format(res))
 
 
-
-
-		fig2.add_subplot( 3, number_of_images, idx)
+		fig2.add_subplot( number_of_images, 4, idx )
 		idx += 1
-		plt.hist(tke.flatten(), bins=100)
-		plt.title('tke bins at 100 bins at res {}'.format(res))
+		ux_real, uy_real = real_images[ ii ,:,:,0], real_images[ ii, :,:,1]
+		
+		tke_real = np.sqrt((ux_real - ux_average_over_time)**2 + (uy_real - uy_average_over_time)**2)
+		plt.imshow(tke_real)	
 
 
 
 
-		fig2.add_subplot( 3, number_of_images, idx)
+		fig2.add_subplot( number_of_images, 4, idx)
+		idx += 1
+		plt.hist([tke.flatten(), tke_real.flatten()], bins='fd')
+
+
+
+
+		ax = fig2.add_subplot(  number_of_images, 4, idx)
+
 		idx += 1
 		sp1D = tke2spectrum(tke,res)
-		plt.plot(sp1D, 'r--', linewidth=2)
-		plt.title('sp1D  data at res {}'.format(res))
+		sp1D_real = tke2spectrum(tke_real,res)
+		ax.plot(sp1D_real, '-.g',  linewidth=0.25)
+		ax.plot(sp1D, ':r', linewidth=0.25)
+		ax.set_yscale("log")
 
-		
 
-	plt.subplots_adjust(hspace=0.1, wspace=0.05)
+
+	plt.subplots_adjust( hspace=0, wspace=0)
 	fig2.tight_layout()
 
 	indx = re.findall('\d+', save_path)[-1]
 	path = os.path.join( os.path.dirname(save_path), "tke_plots_for_res_{}_idx_{}.jpg".format(res, indx)) 	
-	plt.savefig(path, dpi = 200)
+	plt.savefig(path, dpi = 400)
 
 	experiment.log_figure(figure=plt,  figure_name="Turbulent Kinetic energy at res {} and index {} ".format(res, indx))
 	
 
 
 
-def imsave(images, size, path, rbc_data, current_res, dataset_location="", experiment=None, num_images_to_be_shown=4 ):
+
+
+def visualize_each_image_test(images, size, path, experiemnt, dataset_location = None, num_images_to_be_shown=4):
+	h, w = images.shape[1], images.shape[2]
+	c = images.shape[3]
+		
+	# number_of_images = min(images.shape[0], num_images_to_be_shown)
+
+
+	fig=plt.figure()				
+	idx=1
+	for  ii , image in enumerate(images):
+
+		plt.clf()
+		# image = post_process_generator_output(image)
+		ux_data_plot, uy_data_plot = image[:,:,0], image[:,:,1]
+
+		ax = fig.add_subplot( 1, 2, idx)
+		idx += 1
+		plt.imshow(ux_data_plot)
+		plt.xticks([])
+		plt.yticks([])
+		
+
+		ax = fig.add_subplot(  1, 2, idx)
+		idx += 1
+		plt.hist(total_preds.flatten(), bins='fd',histtype='step', label="{}".format(counter), density=True)
+		plt.imshow(uy_data_plot)
+		plt.xticks([])
+		plt.yticks([])
+		
+
+	
+
+		plt.subplots_adjust( hspace=0, wspace=0)
+		fig.tight_layout()
+		plt.savefig(path, dpi = 400)
+	
+		experiment.log_figure(figure=plt,  figure_name="test image at size {} for ii {}".format(size, ii))
+
+
+
+
+
+
+
+def calculate_divergence_tf(generated_data, real_data):
+
+	"""
+	generated_data shape is  64*NH*2
+
+
+	"""
+	
+	# randn = np.random.normal(loc=0, scale=1,size=(100,4,4,2))
+	# generated_data = tf.convert_to_tensor(generated_data,dtype=tf.float32)
+
+
+	ux_x = tf.image.sobel_edges(generated_data[:,:,:,:1])[:,:,:,:,1]
+	uy_y = tf.image.sobel_edges(generated_data[:,:,:,-1:])[:,:,:,:,0]
+	tmp =  (ux_x + uy_y)[:,:,:,0]
+	fake_values = tf.reduce_mean(tmp, axis=[1,2])
+
+
+
+	ux_x = tf.image.sobel_edges(real_data[:,:,:,:1])[:,:,:,:,1]
+	uy_y = tf.image.sobel_edges(real_data[:,:,:,-1:])[:,:,:,:,0]
+	tmp =  (ux_x + uy_y)[:,:,:,0]
+	real_values = tf.reduce_mean(tmp, axis=[1,2])
+
+
+	return fake_values, real_values
+
+
+
+
+
+
+def calculate_divergence(generated_data, path, experiment, real_images):
+
+	"""
+	generated_data shape is  64*NH*2
+
+
+	"""
+	
+	# randn = np.random.normal(loc=0, scale=1,size=(100,4,4,2))
+	generated_data = tf.convert_to_tensor(generated_data,dtype=tf.float32)
+
+
+	ux_x = tf.image.sobel_edges(generated_data[:,:,:,:1])[:,:,:,:,1]
+	uy_y = tf.image.sobel_edges(generated_data[:,:,:,-1:])[:,:,:,:,0]
+	tmp =  (ux_x + uy_y)[:,:,:,0]
+	fake_values = tf.reduce_mean(tmp, axis=[1,2])
+
+
+
+
+
+
+	real_data = tf.convert_to_tensor(real_images,dtype=tf.float32)
+
+	ux_x = tf.image.sobel_edges(real_data[:,:,:,:1])[:,:,:,:,1]
+	uy_y = tf.image.sobel_edges(real_data[:,:,:,-1:])[:,:,:,:,0]
+	tmp =  (ux_x + uy_y)[:,:,:,0]
+	real_values = tf.reduce_mean(tmp, axis=[1,2])
+
+
+	fig=plt.figure()
+	plt.hist([fake_values.flatten(), real_values.flatten() ], bins='fd', histtype='step', density=True, color=["green","red"])	
+
+	experiment.log_figure(figure=plt,  figure_name=" divergence plots with {} images".format(real_images.shape[0]))
+
+
+
+
+	# ux_x = tf.image.sobel_edges(generated_data[:,:,:,:1])[:,:,:,:,1]
+	# uy_y = tf.image.sobel_edges(generated_data[:,:,:,-1:])[:,:,:,:,0]
+	# values = tf.reduce_mean((ux_x + uy_y)[:,:,:,0], axis=0)
+	# print("shape of ux_x {}, values {}".format(tf.shape(ux_x), tf.shape(values)))
+
+	# number_of_images = min(images.shape[0], num_images_to_be_shown)
+
+
+	# fig=plt.figure()				
+	# idx=1
+
+
+	# ux_real , uy_real = real_images[ 0, :, :, 0], real_images[ 0, :, :, 1]
+
+	# fig.add_subplot( 2, 2, idx)
+	# idx += 1
+	# plt.imshow(ux_data[0])
+	# plt.xticks([])
+	# plt.yticks([])
+	
+
+	# fig.add_subplot( 2, 2, idx)
+	# idx += 1
+	# plt.imshow(ux_real)
+	# plt.xticks([])
+	# plt.yticks([])
+
+
+
+	# fig.add_subplot( 2, 2, idx)
+	# idx += 1
+	# plt.imshow(uy_data[0])
+	# plt.xticks([])
+	# plt.yticks([])
+	
+
+	# fig.add_subplot( 2, 2, idx)
+	# idx += 1
+	# plt.imshow(uy_real)
+	# plt.xticks([])
+	# plt.yticks([])
+
+	# plt.subplots_adjust( hspace=0, wspace=0)
+	# fig.tight_layout()
+	# plt.savefig(path, dpi = 400)
+
+	# experiment.log_figure(figure=plt,  figure_name=" plotting original and generated plots at {}".format(res))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def plot_generated_velocity(ux_data, uy_data, path, experiment, real_images):
+
+
+
+	res = ux_data.shape[-1]
+	# number_of_images = min(images.shape[0], num_images_to_be_shown)
+
+
+	fig=plt.figure()				
+	idx=1
+
+
+	ux_real , uy_real = real_images[ 0, :, :, 0], real_images[ 0, :, :, 1]
+
+	fig.add_subplot( 2, 2, idx)
+	idx += 1
+	plt.imshow(ux_data[0])
+	plt.xticks([])
+	plt.yticks([])
+	
+
+	fig.add_subplot( 2, 2, idx)
+	idx += 1
+	plt.imshow(ux_real)
+	plt.xticks([])
+	plt.yticks([])
+
+
+
+	fig.add_subplot( 2, 2, idx)
+	idx += 1
+	plt.imshow(uy_data[0])
+	plt.xticks([])
+	plt.yticks([])
+	
+
+	fig.add_subplot( 2, 2, idx)
+	idx += 1
+	plt.imshow(uy_real)
+	plt.xticks([])
+	plt.yticks([])
+
+	plt.subplots_adjust( hspace=0, wspace=0)
+	fig.tight_layout()
+	plt.savefig(path, dpi = 400)
+
+	experiment.log_figure(figure=plt,  figure_name=" plotting original and generated plots at {}".format(res))
+
+
+
+
+def plot_velocity_hist(ux_data, uy_data, path, experiment, real_images, dataset_location = None, num_images_to_be_shown=4):
+
+
+	res = ux_data.shape[-1]
+	# number_of_images = min(images.shape[0], num_images_to_be_shown)
+
+
+	fig=plt.figure()				
+	idx=1
+
+	ux_real , uy_real = real_images[ :, :, :, 0], real_images[ :, :, :, 1]	
+
+
+	ax = fig.add_subplot( 1, 2, idx)
+	idx += 1
+	plt.hist([ux_data.flatten(), ux_real.flatten() ], bins='fd',histtype='step', density=True, color=["green","red"])
+	# plt.xticks([])
+	# plt.yticks([])
+	
+
+	ax = fig.add_subplot(  1, 2, idx)
+	idx += 1
+	plt.hist([uy_data.flatten(),uy_real.flatten()] , bins='fd',histtype='step', density=True, color=["green","red"])
+	
+	# plt.xticks([])
+	# plt.yticks([])
+	
+
+
+
+	plt.subplots_adjust( hspace=0, wspace=0)
+	fig.tight_layout()
+	plt.savefig(path, dpi = 400)
+
+	experiment.log_figure(figure=plt,  figure_name=" plotting ux and uy histogram at res : {}".format(res))
+
+
+
+
+
+
+
+
+
+
+
+
+
+def imsave(images, size, path, rbc_data, current_res, dataset_location="", experiment=None, num_images_to_be_shown=4, real_images=None ):
 	# return scipy.misc.imsave(path, merge(images, size))
 
 	if(rbc_data):
@@ -294,39 +598,69 @@ def imsave(images, size, path, rbc_data, current_res, dataset_location="", exper
 		
 		number_of_images = min(images.shape[0], num_images_to_be_shown)
 
-		get_turbulent_kinetic_energy(images[: number_of_images, :,:,:], number_of_images, current_res, path, dataset_location, experiment)
 
 
-		fig=plt.figure(figsize=(6.4, 4.8))		
+
+		# get_turbulent_kinetic_energy(images[: number_of_images, :,:,:], number_of_images, current_res, path, dataset_location, experiment, real_images)
+
+
+		fig=plt.figure(figsize=(5,5))				
 		idx=1
-		for __, image in enumerate(images):
+
+		for  ii , image in enumerate(images):
 
 			if(idx > number_of_images*2):
 				break;
 
 			# image = post_process_generator_output(image)
 			ux_data_plot, uy_data_plot = image[:,:,0], image[:,:,1]
+			ux_real, uy_real = real_images[ ii ,:,:,0], real_images[ ii, :,:,1]
 
-			
 
-			fig.add_subplot(  2, number_of_images, idx)
+			fig.add_subplot(  number_of_images, 6, idx)
 			idx += 1
 			plt.imshow(ux_data_plot)
 			plt.xticks([])
 			plt.yticks([])
-			plt.title('fake ux_data at res {}'.format(current_res))
 			
-			fig.add_subplot( 2, number_of_images, idx)
+
+			fig.add_subplot(   number_of_images, 6, idx)
+			
+			idx += 1
+			plt.imshow(ux_real)
+			plt.xticks([])
+			plt.yticks([])
+			
+			
+			
+			fig.add_subplot(  number_of_images, 6, idx)
 			idx += 1
 			plt.imshow(uy_data_plot)
 			plt.xticks([])
 			plt.yticks([])
-			plt.title('fake uy_data at res {}'.format(current_res))
 
 
-		plt.subplots_adjust(hspace=0.1, wspace=0.05)
+			fig.add_subplot(  number_of_images, 6, idx)
+			idx += 1
+			plt.imshow(uy_real)
+			plt.xticks([])
+			plt.yticks([])
+
+
+			fig.add_subplot( number_of_images, 6, idx)
+			idx += 1
+			plt.hist([ux_data_plot.flatten(), ux_real.flatten()], bins='fd')
+		
+
+			fig.add_subplot( number_of_images, 6, idx)
+			idx += 1
+			plt.hist([uy_data_plot.flatten(), uy_real.flatten()], bins='fd')
+
+
+
+		plt.subplots_adjust( hspace=0, wspace=0)
 		fig.tight_layout()
-		plt.savefig(path, dpi = 200)
+		plt.savefig(path, dpi = 400)
 		return plt	
 	
 	else:
@@ -334,6 +668,11 @@ def imsave(images, size, path, rbc_data, current_res, dataset_location="", exper
 		images = post_process_generator_output(images)
 		images = cv2.cvtColor(images.astype('uint8'), cv2.COLOR_RGB2BGR)
 		cv2.imwrite(path, images)
+
+
+
+
+
 
 def inverse_transform(images):
 	return (images+1.)/2.

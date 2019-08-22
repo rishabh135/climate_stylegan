@@ -49,6 +49,7 @@ class StyleGAN(object):
 
 		self.gpu_num = args.gpu_num
 
+		self.style_mixing_flag = args.style_mixing_flag
 		self.z_dim = 512
 		self.w_dim = 512
 		self.n_mapping = 8
@@ -62,9 +63,15 @@ class StyleGAN(object):
 		self.learning_rate_base = 0.001
 		self.num_images_to_be_shown = 4
 
+		## training with trans indicated should we 
 		self.train_with_trans = {4: False, 8: False, 16: True, 32: True, 64: True, 128: True, 256: True, 512: True, 1024: True}
 		self.batch_sizes = get_batch_sizes(self.gpu_num)
 
+		"""
+		if gpu_num == 4:
+		x = OrderedDict([(4, 128), (8, 64), (16, 32), (32, 16), (64, 8), (128, 4), (256, 4), (512, 4), (1024, 4)])
+
+		"""
 		self.end_iteration = get_end_iteration(self.iteration, self.max_iteration, self.train_with_trans, self.resolutions, self.start_res)
 		
 
@@ -75,9 +82,9 @@ class StyleGAN(object):
 
 		self.sn = args.sn
 
-		self.print_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 3000, 256: 5000, 512: 10000, 1024: 10000}
+		# self.print_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 3000, 256: 5000, 512: 10000, 1024: 10000}
 
-		# self.print_freq = {4: 1000, 8: 10, 16: 10, 32: 10, 64: 10, 128: 30, 256: 10, 512: 10000, 1024: 10000}
+		self.print_freq = {4: 1000, 8: 2, 16: 2, 32: 2, 64: 2, 128: 2, 256: 2, 512: 10000, 1024: 10000}
 
 		self.save_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 3000, 256: 5000, 512: 10000, 1024: 10000}
 
@@ -87,6 +94,7 @@ class StyleGAN(object):
 		self.test_num = args.test_num
 		self.seed = args.seed
 
+		self.plotting_histogram_images = 64
 
 		self.rbc_data = self.dataset_name.startswith("rbc")
 		self.dataset_location = args.dataset_location
@@ -100,6 +108,14 @@ class StyleGAN(object):
 
 		self.sample_dir = os.path.join(self.sample_dir, self.model_dir)
 		check_folder(self.sample_dir)
+
+
+
+
+
+
+
+
 
 		print("\n\n")
 
@@ -195,7 +211,7 @@ class StyleGAN(object):
 					layer_index += 2
 
 
-				print("########################\n\n")
+				# print("########################\n\n")
 				# Middle style [16 ~ 32]
 				# facial features, eye
 				for res, n_f in middle_styles.items():
@@ -206,7 +222,7 @@ class StyleGAN(object):
 					
 					img = torgb(x, res, self.input_channels,  sn=self.sn)
 					
-					print("@@ G_synthesis after torgb  x:{}   input_channels:{} ".format( img.shape, self.input_channels)) 
+					# print("@@ G_synthesis after torgb  x:{}   input_channels:{} ".format( img.shape, self.input_channels)) 
 					images_out = upscale2d(images_out)
 					images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
 
@@ -263,7 +279,7 @@ class StyleGAN(object):
 				w_broadcasted = self.update_moving_average_of_w(w_broadcasted, w_avg)
 
 				# perform style mixing regularization
-				w_broadcasted = self.style_mixing_regularization(z, w_broadcasted, n_broadcast, resolutions)
+				w_broadcasted = self.style_mixing_regularization(z, w_broadcasted, n_broadcast, resolutions, self.style_mixing_flag)
 
 				print("w_broadcasted _ with _style _mixing :  ", w_broadcasted.shape)
 
@@ -358,10 +374,16 @@ class StyleGAN(object):
 
 		return w_broadcasted
 
-	def style_mixing_regularization(self, z, w_broadcasted, n_broadcast, resolutions):
+	def style_mixing_regularization(self, z, w_broadcasted, n_broadcast, resolutions, style_mixing_flag):
 		with tf.name_scope('style_mix'):
-			z2 = tf.random_normal(tf.shape(z), dtype=tf.float32)
-			w_broadcasted2 = self.g_mapping(z2, n_broadcast)
+
+			if(style_mixing_flag):
+				z2 = tf.random_normal(tf.shape(z), dtype=tf.float32)
+				w_broadcasted2 = self.g_mapping(z2, n_broadcast)
+			else:
+				w_broadcasted2 = w_broadcasted
+
+
 			layer_indices = np.arange(n_broadcast)[np.newaxis, :, np.newaxis]
 			last_layer_index = (len(resolutions)) * 2
 
@@ -372,6 +394,8 @@ class StyleGAN(object):
 			w_broadcasted = tf.where(tf.broadcast_to(layer_indices < mixing_cutoff, tf.shape(w_broadcasted)),
 									 w_broadcasted,
 									 w_broadcasted2)
+
+		print("Inside style mixing the w_broadcasted = {} and layer_indices {} ".format(w_broadcasted.shape, layer_indices))
 		return w_broadcasted
 
 	def truncation_trick(self, n_broadcast, w_broadcasted, w_avg, truncation_psi):
@@ -392,17 +416,29 @@ class StyleGAN(object):
 		if self.phase == 'train' :
 			self.d_loss_per_res = {}
 			self.g_loss_per_res = {}
+
+			self.r1_penalty = {}
+
 			self.generator_optim = {}
 			self.discriminator_optim = {}
 			self.alpha_summary_per_res = {}
+			
 			self.d_summary_per_res = {}
 			self.g_summary_per_res = {}
+
 			self.train_fake_images = {}
 			self.real_images = {}
+
+			self.divergence_fake = {}
+			self.divergence_real = {}
+
 
 			for res in self.resolutions[self.resolutions.index(self.start_res):]:
 				g_loss_per_gpu = []
 				d_loss_per_gpu = []
+
+				r1_penalty_list = []
+
 				train_fake_images_per_gpu = []
 				real_images_per_gpu = []
 				batch_size = self.batch_sizes.get(res, self.batch_size_base)
@@ -527,10 +563,16 @@ class StyleGAN(object):
 								fake_logit = self.discriminator(fake_img, alpha, res)
 
 								# compute loss
-								d_loss, g_loss = compute_loss(real_img, real_logit, fake_logit)
+								d_loss, g_loss, r1_penalty = compute_loss(real_img, real_logit, fake_logit)
 
 								d_loss_per_gpu.append(d_loss)
 								g_loss_per_gpu.append(g_loss)
+								# print(" g_loss : {} and r1 pentalty : {} ".format(g_loss.shape, r1_penalty.shape))
+
+
+								# print("\n\n\n")
+								r1_penalty_list.append(r1_penalty)
+								
 								train_fake_images_per_gpu.append(fake_img)
 								real_images_per_gpu.append(real_img)
 
@@ -541,6 +583,33 @@ class StyleGAN(object):
 
 				d_loss = tf.reduce_mean(d_loss_per_gpu)
 				g_loss = tf.reduce_mean(g_loss_per_gpu)
+
+				r1_penalty = tf.reduce_mean(r1_penalty_list)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+				self.r1_penalty[res] = r1_penalty
 
 				d_lr = self.d_learning_rates.get(res, self.learning_rate_base)
 				g_lr = self.g_learning_rates.get(res, self.learning_rate_base)
@@ -565,9 +634,15 @@ class StyleGAN(object):
 				self.d_loss_per_res[res] = d_loss
 				self.g_loss_per_res[res] = g_loss
 
-				self.train_fake_images[res] = tf.concat(train_fake_images_per_gpu, axis=0)
 
+
+				self.train_fake_images[res] = tf.concat(train_fake_images_per_gpu, axis=0)
 				self.real_images[res] = tf.concat(real_images_per_gpu, axis=0)
+
+
+				self.divergence_fake[res], self.divergence_real[res] = calculate_divergence_tf( self.train_fake_images[res], self.real_images[res])
+
+
 				""" Summary """
 				self.alpha_summary_per_res[res] = tf.summary.scalar("alpha_{}".format(res), alpha)
 
@@ -595,6 +670,10 @@ class StyleGAN(object):
 
 		# summary writer
 		self.writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir, self.sess.graph)
+
+
+
+
 
 		# restore check-point if it exits
 		could_load, checkpoint_counter = self.load(self.checkpoint_dir)
@@ -658,6 +737,10 @@ class StyleGAN(object):
 		for current_res_num in range(start_res_idx, len(self.resolutions)):
 
 
+
+			self.generated_images_stored = []
+			self.real_images_stored = []
+
 			current_res = self.resolutions[current_res_num]
 			batch_size_per_res = self.batch_sizes.get(current_res, self.batch_size_base) * self.gpu_num
 
@@ -689,6 +772,9 @@ class StyleGAN(object):
 																			 self.alpha_summary_per_res[current_res],
 																			 self.g_loss_per_res[current_res]])
 
+
+				r1_loss = self.sess.run([self.r1_penalty[current_res]])
+
 				self.writer.add_summary(summary_g_per_res, idx)
 				self.writer.add_summary(summary_alpha, idx)
 
@@ -698,20 +784,87 @@ class StyleGAN(object):
 
 				self.experiment.log_metric("d_loss",d_loss,step=counter)
 				self.experiment.log_metric("g_loss",g_loss,step=counter)
+				self.experiment.log_metric("r1_penalty", r1_loss[0],step=counter)
 
-
+				
 				print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
 					  % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss))
 
 				if np.mod(idx + 1, self.print_freq[current_res]) == 0:
 					samples = self.sess.run(self.train_fake_images[current_res])
+
+					"""
+						Also plotting real samples for transparency purposes
+					"""
+					
+					real_samples = self.sess.run(self.real_images[current_res])
+
+
+
+					# fake_values, real_values = self.sess.run(self.divergence_fake[res], self.divergence_real[res]) 
+
+
 					manifold_h = int(np.floor(np.sqrt(batch_size_per_res)))
 					manifold_w = int(np.floor(np.sqrt(batch_size_per_res)))
 
 
 					if(self.rbc_data):
-						exp_figure = imsave(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],  './{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.rbc_data, current_res, self.dataset_location, self.experiment, self.num_images_to_be_shown )
-						self.experiment.log_figure(figure=exp_figure,  figure_name="fake images at {} at index {}".format(current_res, idx+1))
+
+						"""
+		
+						### To DO a non hacky way to add subarrays continuously 
+
+						"""
+						self.generated_images_stored.append(samples)
+						self.real_images_stored.append(real_samples)
+						
+						# try:
+						# 	self.ux_images_stored.concatenate( axis=0)
+						# except:
+						# 	self.ux_images_stored = samples[:manifold_h * manifold_w, :, :, 0]
+						
+
+						# try:	
+						# 	np.concatenate(self.uy_images_stored, samples[:manifold_h * manifold_w, :, :, 1], axis=0)
+						# except:
+						# 	self.uy_images_stored = samples[:manifold_h * manifold_w, :, :, 1]
+							
+
+
+
+
+
+						
+						# self.experiment.log_metric("summary alpha", summary_alpha,step=counter)
+						
+
+						# try:
+						# 	self.real_samples.concatenate(, axis=0)
+						# except:
+						# 	self.real_samples = real_samples
+
+
+						# print("Current res: real images.shape : {} , generated shape : {}  ".format( self.real_images_stored.shape[0], self.generated_images_stored.shape[0] ))
+							
+
+						if(len(self.real_images_stored)* self.real_images_stored[0].shape[0] >= self.plotting_histogram_images):
+
+
+							# print("^^^^^^^^^^^^^ it entered the plotting function correctly \n\n\n")
+							tmp_real_images = np.concatenate(self.real_images_stored, axis=0)
+
+							tmp_fake_images = np.concatenate(self.generated_images_stored, axis=0)
+							
+							plot_velocity_hist(tmp_fake_images[-self.plotting_histogram_images:, :,:,0], tmp_fake_images[-self.plotting_histogram_images:, :, :, 1] , "./{}/fake_img_histogram_{:04d}_{:06d}.jpg".format(self.sample_dir, current_res, idx + 1), self.experiment, tmp_real_images[-self.plotting_histogram_images:,:,:,:])
+
+
+							plot_generated_velocity(tmp_fake_images[-self.plotting_histogram_images:, :,:,0], tmp_fake_images[-self.plotting_histogram_images:, :, :, 1] , "./{}/real_and_fake_img_{:04d}_{:06d}.jpg".format(self.sample_dir, current_res, idx + 1), self.experiment, tmp_real_images[-self.plotting_histogram_images:, :, :, :])
+
+							# calculate_divergence(tmp_fake_images[-self.plotting_histogram_images:, :, :, :] , "./{}/real_and_fake_img_{:04d}_{:06d}.jpg".format(self.sample_dir, current_res, idx + 1), self.experiment, tmp_real_images[-self.plotting_histogram_images:, :, :, :])
+					
+						# exp_figure = imsave(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],  './{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.rbc_data, current_res, self.dataset_location, self.experiment, self.num_images_to_be_shown, real_samples[:, :, :, :] )
+					
+						# self.experiment.log_figure(figure=exp_figure,  figure_name="fake images at {} at index {}".format(current_res, idx+1))
 
 
 					else:		
@@ -725,6 +878,18 @@ class StyleGAN(object):
 			# After an epoch, start_batch_idx is set to zero
 			# non-zero value is only for the first epoch after loading pre-trained model
 			start_batch_idx = 0
+
+
+			"""
+				Save numpy files of original and generated images 
+				shape :  NHWC    (c=2 in this case)
+						
+			"""
+
+
+			np.save( "./{}/generated_images_{}.npy".format(self.result_dir, current_res), np.concatenate(self.generated_images_stored, axis=0))
+			np.save( "./{}/real_images_{}.npy".format(self.result_dir, current_res), np.concatenate(self.real_images_stored, axis=0))
+
 
 			# save model
 			self.save(self.checkpoint_dir, counter)
@@ -795,14 +960,26 @@ class StyleGAN(object):
 				self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
 				samples = self.sess.run(self.fake_images)
 
-				save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
-							'{}/test_fake_img_{}_{}_{}.jpg'.format(result_dir, self.img_size, i, seed))
+				visualize_each_image_test( samples[:image_frame_dim * image_frame_dim, :, :, :], [ image_frame_dim,  image_frame_dim],  './{}/fake_img_{:04d}_{:06d}.jpg'.format(result_dir, self.img_size, i),  self.experiment, self.dataset_location,  num_images_to_be_shown=4)	
 
 			else :
 				samples = self.sess.run(self.fake_images)
 
-				save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
-							'{}/test_fake_img_{}_{}.jpg'.format(result_dir, self.img_size, i))
+
+				if(self.rbc_data):
+
+
+
+					visualize_each_image_test( samples[:image_frame_dim * image_frame_dim, :, :, :], [ image_frame_dim,  image_frame_dim],  './{}/fake_img_{:04d}_{:06d}.jpg'.format(result_dir, self.img_size, i),  self.experiment, self.dataset_location,  num_images_to_be_shown=4)				
+					
+
+					# else:		
+					# 	self.experiment.log_image( (samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w], current_res ), name="fake images generated during training")
+					# 	save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
+					# 				'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.rbc_data)
+
+				# save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
+				# 			'{}/test_fake_img_{}_{}.jpg'.format(result_dir, self.img_size, i))
 
 	def draw_uncurated_result_figure(self):
 

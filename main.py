@@ -3,10 +3,14 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-	
+    
 from comet_ml import Experiment
 
+
+
 from StyleGAN import StyleGAN
+
+
 import argparse
 from utils import *
 
@@ -34,13 +38,13 @@ def parse_args():
 	parser.add_argument('--gpu_num', type=int, default=2, help='The number of gpu')
 
 	parser.add_argument('--progressive', type=str2bool, default=True, help='use progressive training')
-	parser.add_argument('--sn', type=str2bool, default=True, help='use spectral normalization')
+	parser.add_argument('--sn', type=str2bool, default=False, help='use spectral normalization')
 
 	parser.add_argument('--start_res', type=int, default=8, help='The number of starting resolution')
-	parser.add_argument('--img_size', type=int, default=128, help='The target size of image')
+	parser.add_argument('--img_size', type=int, default=256, help='The target size of image')
 	parser.add_argument('--test_num', type=int, default=100, help='The number of generating images in the test phase')
 
-	parser.add_argument('--input_channels', type=int, default=3, help='The number of input channels for the input real images')
+	parser.add_argument('--input_channels', type=int, default=2, help='The number of input channels for the input real images')
 	parser.add_argument('--seed', type=str2bool, default=True, help='seed in the draw phase')
 
 	parser.add_argument('--checkpoint_dir', type=str, default='../stored_outputs/checkpoint',
@@ -53,7 +57,12 @@ def parse_args():
 						help='Directory name to save the samples on training')
 
 
-	parser.add_argument('--dataset_location', type=str, default="/global/cscratch1/sd/rgupta2/backup/netcdf_normalized_std/rbc_500/",
+	parser.add_argument('--style_mixing_flag', type=bool, default= False,
+						help='should there be style mixing of two latents from g_mapping network , default is false')
+
+
+
+	parser.add_argument('--dataset_location', type=str, default="/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/rbc_500/max/",
 						help='dataset_directory')
 
 
@@ -65,8 +74,8 @@ def check_args(args):
 
 	# import comet_ml in the top of your file
 
-	experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa",
-								project_name="{}".format(args.dataset), workspace="style-gan")
+	experiment = Experiment(api_key="du7NYQeIL1S8PuOYtZpB9hlZr",
+								project_name="normalized_max_{}".format(args.dataset), workspace="rbc-style-gan")
 
 
 
@@ -145,3 +154,4 @@ if __name__ == '__main__':
 
 
 
+ 

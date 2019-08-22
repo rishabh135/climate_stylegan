@@ -138,7 +138,7 @@ def compute_loss(real_images, real_logit, fake_logit):
 	g_loss = tf.nn.softplus(-fake_logit)
 	g_loss = tf.reduce_mean(g_loss)
 
-	return d_loss, g_loss
+	return d_loss, g_loss, r1_penalty
 
 def lerp(a, b, t):
 	# t == 1.0: use b
