@@ -26,7 +26,5 @@ pip install comet-ml
 #run the application:
 # python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/main.py --dataset FFHQ_128 --img_size 128 --gpu_num 2 --progressive True --phase train
 python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/main.py --dataset rbc_500 --input_channels 2 --start_res 8 \
-	--img_size 256 --gpu_num 8 --progressive True --phase train \
-	--checkpoint_dir ../stored_outputs/max_norm_rbc/checkpoint --result_dir ../stored_outputs/max_norm_rbc/result \
-	--log_dir ../stored_outputs/max_norm_rbc/log --sample_dir ../stored_outputs/max_norm_rbc/sample  
- 
+	--img_size 256 --gpu_num 8 --progressive True --dataset_location "/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/rbc_500/std_normalized/" --phase train --checkpoint_dir ../stored_outputs/std_normalized/checkpoint --result_dir ../stored_outputs/std_normalized/result \
+	--log_dir ../stored_outputs/std_normalized/log --sample_dir ../stored_outputs/std_normalized/sample  --name_experiment "experiement for standard normalzied without style mixing from scratch"

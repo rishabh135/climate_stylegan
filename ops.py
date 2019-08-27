@@ -30,7 +30,7 @@ def get_weight(weight_shape, gain, lrmul):
 def conv(x, channels, kernel=3, stride=1, gain=np.sqrt(2), lrmul=1.0, sn=False, scope='conv_0'):
 	with tf.variable_scope(scope):
 		x_shape = x.shape[-1].value
-		print("x_shape: ", x_shape)
+		# print("x_shape: ", x_shape)
 		weight_shape = [kernel, kernel, x_shape, channels]
 		weight = get_weight(weight_shape, gain, lrmul)
 

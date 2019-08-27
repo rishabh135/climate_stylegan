@@ -66,6 +66,9 @@ def parse_args():
 						help='dataset_directory')
 
 
+	parser.add_argument('--name_experiment', type=str, default="",
+						help='dataset_directory')
+
 
 	return check_args(parser.parse_args())
 
@@ -74,8 +77,8 @@ def check_args(args):
 
 	# import comet_ml in the top of your file
 
-	experiment = Experiment(api_key="du7NYQeIL1S8PuOYtZpB9hlZr",
-								project_name="normalized_max_{}".format(args.dataset), workspace="rbc-style-gan")
+	experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa",
+								project_name="{}_{}".format(args.name_experiment, args.dataset), workspace="style-gan")
 
 
 

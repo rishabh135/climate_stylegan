@@ -82,9 +82,9 @@ class StyleGAN(object):
 
 		self.sn = args.sn
 
-		# self.print_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 3000, 256: 5000, 512: 10000, 1024: 10000}
+		self.print_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 1000, 256: 1000, 512: 10000, 1024: 10000}
 
-		self.print_freq = {4: 1000, 8: 2, 16: 2, 32: 2, 64: 2, 128: 2, 256: 2, 512: 10000, 1024: 10000}
+		# self.print_freq = {4: 1000, 8: 500, 16: 500, 32: 500, 64: 100, 128: 100, 256: 10, 512: 10000, 1024: 10000}
 
 		self.save_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 3000, 256: 5000, 512: 10000, 1024: 10000}
 
@@ -481,7 +481,7 @@ class StyleGAN(object):
 									dtype = tf.float32
 									header_offset = npy_header_offset(npy_file)
 									dataset = tf.data.FixedLengthRecordDataset(self.dataset, num_features * dtype.size, header_bytes=header_offset)
-									dataset = dataset.map(lambda s: tf.image.resize( tf.transpose(tf.reshape(tf.decode_raw(s, dtype), [2,256,256]) , perm=[1,2,0]), size=[res, res], method=tf.image.ResizeMethod.BILINEAR), num_parallel_calls=16)
+									dataset = dataset.map(lambda s: tf.image.resize( tf.transpose(tf.reshape(tf.decode_raw(s, dtype), [2,256,256]) , perm=[1,2,0]), size=[res, res], method=tf.image.ResizeMethod.BILINEAR), num_parallel_calls=4)
  
 
 									print("dataset : ", type(dataset))
@@ -529,7 +529,7 @@ class StyleGAN(object):
 									######################################################################################
 									# applying operations to input slices 
 									inputs = inputs.apply(shuffle_and_repeat(self.dataset_num)). \
-										apply(map_and_batch(image_class.image_processing, batch_size, num_parallel_batches=16, drop_remainder=True)). \
+										apply(map_and_batch(image_class.image_processing, batch_size, num_parallel_batches=8, drop_remainder=True)). \
 										apply(prefetch_to_device(gpu_device, None))
 									
 									# When using dataset.prefetch, use buffer_size=None to let it detect optimal buffer size
@@ -640,7 +640,17 @@ class StyleGAN(object):
 				self.real_images[res] = tf.concat(real_images_per_gpu, axis=0)
 
 
-				self.divergence_fake[res], self.divergence_real[res] = calculate_divergence_tf( self.train_fake_images[res], self.real_images[res])
+
+
+
+
+
+				# self.divergence_fake[res], self.divergence_real[res] = calculate_divergence_tf( self.train_fake_images[res][-1000:], self.real_images[res][-1000:])
+
+
+
+
+
 
 
 				""" Summary """
@@ -854,11 +864,43 @@ class StyleGAN(object):
 							tmp_real_images = np.concatenate(self.real_images_stored, axis=0)
 
 							tmp_fake_images = np.concatenate(self.generated_images_stored, axis=0)
+
+
+						
 							
 							plot_velocity_hist(tmp_fake_images[-self.plotting_histogram_images:, :,:,0], tmp_fake_images[-self.plotting_histogram_images:, :, :, 1] , "./{}/fake_img_histogram_{:04d}_{:06d}.jpg".format(self.sample_dir, current_res, idx + 1), self.experiment, tmp_real_images[-self.plotting_histogram_images:,:,:,:])
 
 
 							plot_generated_velocity(tmp_fake_images[-self.plotting_histogram_images:, :,:,0], tmp_fake_images[-self.plotting_histogram_images:, :, :, 1] , "./{}/real_and_fake_img_{:04d}_{:06d}.jpg".format(self.sample_dir, current_res, idx + 1), self.experiment, tmp_real_images[-self.plotting_histogram_images:, :, :, :])
+
+
+							if np.mod(idx + 1, 50 * self.print_freq[current_res]) == 0:
+
+								images_to_be_saved = min(5000, tmp_fake_images.shape[0])
+
+								np.save( "./{}/generated_images_{}_at_index_{}.npy".format(self.result_dir, current_res, idx), 								tmp_fake_images[-images_to_be_saved:, :,:,:])
+								np.save( "./{}/real_images_{}_at_index_{}.npy".format(self.result_dir, current_res, idx), tmp_real_images[-images_to_be_saved:, :,:,:])
+
+							# if(current_res == 256):
+							# 	try:
+							# 		plot_tke(tmp_fake_images[-self.plotting_histogram_images:, :,:,0], tmp_fake_images[-self.plotting_histogram_images:, :, :, 1] , "./{}/tke_sp1d_{:04d}_{:06d}.jpg".format(self.sample_dir, current_res, idx + 1), self.experiment, tmp_real_images[-self.plotting_histogram_images:, :, :, :])
+
+							# 	except:
+							# 		continue
+
+
+
+				# if np.mod(idx + 1, 2*self.print_freq[current_res]) == 0:
+
+
+				# 	fake_values, real_values = self.sess.run([self.divergence_fake[current_res], self.divergence_real[current_res]])
+
+				# 	fig=plt.figure()
+				# 	plt.hist([fake_values.flatten(), real_values.flatten() ], bins='fd', histtype='step', density=True, color=["green","red"])	
+
+				# 	self.experiment.log_figure(figure=plt,  figure_name=" divergence plots at index {} res {} ".format(idx, current_res ))
+
+
 
 							# calculate_divergence(tmp_fake_images[-self.plotting_histogram_images:, :, :, :] , "./{}/real_and_fake_img_{:04d}_{:06d}.jpg".format(self.sample_dir, current_res, idx + 1), self.experiment, tmp_real_images[-self.plotting_histogram_images:, :, :, :])
 					
@@ -867,10 +909,10 @@ class StyleGAN(object):
 						# self.experiment.log_figure(figure=exp_figure,  figure_name="fake images at {} at index {}".format(current_res, idx+1))
 
 
-					else:		
-						self.experiment.log_image( (samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w], current_res ), name="fake images generated during training")
-						save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
-									'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.rbc_data)
+					# else:		
+					# 	self.experiment.log_image( (samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w], current_res ), name="fake images generated during training")
+					# 	save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
+					# 				'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.rbc_data)
 
 				if np.mod(idx + 1, self.save_freq[current_res]) == 0:
 					self.save(self.checkpoint_dir, counter)
@@ -887,8 +929,7 @@ class StyleGAN(object):
 			"""
 
 
-			np.save( "./{}/generated_images_{}.npy".format(self.result_dir, current_res), np.concatenate(self.generated_images_stored, axis=0))
-			np.save( "./{}/real_images_{}.npy".format(self.result_dir, current_res), np.concatenate(self.real_images_stored, axis=0))
+
 
 
 			# save model

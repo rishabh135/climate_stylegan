@@ -1,9 +1,9 @@
 #!/bin/sh
-#SBATCH -N 2
-#SBATCH -c 20
+#SBATCH -N 1
+#SBATCH -c 40
 #SBATCH -C gpu
 #SBATCH -A dasrepo
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:8
 #SBATCH -t 08:00:00 
 
 module load esslurm

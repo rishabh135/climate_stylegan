@@ -27,6 +27,6 @@ pip install comet-ml
 # python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/main.py --dataset FFHQ_128 --img_size 128 --gpu_num 2 --progressive True --phase train
 python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/main.py --dataset rbc_500 --input_channels 2 --start_res 8 \
 	--img_size 256 --gpu_num 8 --progressive True --phase train \
-	--checkpoint_dir ../stored_outputs/max_norm_rbc/checkpoint --result_dir ../stored_outputs/max_norm_rbc/result \
-	--log_dir ../stored_outputs/max_norm_rbc/log --sample_dir ../stored_outputs/max_norm_rbc/sample  
+	--checkpoint_dir ../stored_outputs/wo_style_rbc/checkpoint --result_dir ../stored_outputs/wo_style_rbc/result \
+	--log_dir ../stored_outputs/wo_style_rbc/log --sample_dir ../stored_outputs/wo_style_rbc/sample  --name_experiment "without_style_mixing_max_norm"
  
