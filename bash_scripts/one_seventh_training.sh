@@ -16,18 +16,19 @@ module load cuda/10.0.130
 module load python/3.7-anaconda-2019.07
 
 source activate tf-1.13
-
-
 module load tensorflow/gpu-1.13.1-py36
+
 pip install comet-ml
 
 
 
 #run the application:
 # python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/main.py --dataset FFHQ_128 --img_size 128 --gpu_num 2 --progressive True --phase train
-python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/main.py --dataset rbc_500 --input_channels 2 --start_res 8 \
+python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/main.py --dataset rbc_3500 --input_channels 2 \
+	--start_res 8  \
+	--dataset_location "/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/one_seventh/rbc_3500/noramlized_by_max/" \
 	--img_size 256 --gpu_num 8 --progressive True --phase train \
-	--checkpoint_dir ../stored_outputs/wo_style_rbc/checkpoint --result_dir ../stored_outputs/wo_style_rbc/result \
-	--log_dir ../stored_outputs/wo_style_rbc/log --sample_dir ../stored_outputs/wo_style_rbc/sample \
-	--name_experiment "without_style_mixing_max_norm"
+	--checkpoint_dir ../stored_outputs/one_seventh_max_normalized/checkpoint --result_dir ../stored_outputs/one_seventh_max_normalized/result \
+	--log_dir ../stored_outputs/one_seventh_max_normalized/log --sample_dir ../stored_outputs/one_seventh_max_normalized/sample \
+	--name_experiment "one_seventh_max_normalized with 3500 samples and starts at 3500"
  

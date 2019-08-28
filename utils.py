@@ -121,7 +121,7 @@ def load_from_numpy(dataset_name, dataset_location):
 	filelist = hacky way of selecting all numpy files with basename starting with integers
 	"""
 									
-	filelist = sorted(glob("{}/*.npy".format(dataset_location)))[:-1]
+	filelist = sorted(glob("{}/*.npy".format(dataset_location)))[:]
 	# for file in tmp_list:
 	# 	if re.match("^\d", file):
 	# 		filelist.append(file)
@@ -353,36 +353,48 @@ def merge(images, size):
 
 
 
-
-
-
-
-# def calculate_divergence_tf(generated_data, real_data):
+# def calculate_covariace(generated_data, real_data):
 
 # 	"""
-# 	generated_data shape is  64*NH*2
-
-
-# 	"""
+# 	generated_data shape is  (batch_size* gpu_num) x N x H x C   (C : Ux Uy)
+# 	real_data shape is  (batch_size* gpu_num) x N x H x C
+# 	output_shape = []
 	
-# 	# randn = np.random.normal(loc=0, scale=1,size=(100,4,4,2))
-# 	# generated_data = tf.convert_to_tensor(generated_data,dtype=tf.float32)
-
-
-# 	ux_x = tf.image.sobel_edges(generated_data[:,:,:,:1])[:,:,:,:,1]
-# 	uy_y = tf.image.sobel_edges(generated_data[:,:,:,-1:])[:,:,:,:,0]
-# 	tmp =  (ux_x + uy_y)[:,:,:,0]
-# 	fake_values = tf.reduce_mean(tmp, axis=[1,2])
+# 	"""
+# 	covariance_real = tf.matmul
 
 
 
-# 	ux_x = tf.image.sobel_edges(real_data[:,:,:,:1])[:,:,:,:,1]
-# 	uy_y = tf.image.sobel_edges(real_data[:,:,:,-1:])[:,:,:,:,0]
-# 	tmp =  (ux_x + uy_y)[:,:,:,0]
-# 	real_values = tf.reduce_mean(tmp, axis=[1,2])
+
+def calculate_divergence_tf(generated_data, real_data):
+
+	"""
+	generated_data shape is  (batch_size* gpu_num) x N x H x 2
+	real_data shape is  (batch_size* gpu_num) x N x H x 2
+	output_shape = []
+	
+	"""
+	
+	# randn = np.random.normal(loc=0, scale=1,size=(100,4,4,2))
+	# generated_data = tf.convert_to_tensor(generated_data,dtype=tf.float32)
 
 
-# 	return fake_values, real_values
+	ux_x = tf.image.sobel_edges(generated_data[:,:,:,:1])[:,:,:,:,1]
+	uy_y = tf.image.sobel_edges(generated_data[:,:,:,-1:])[:,:,:,:,0]
+	tmp =  (ux_x + uy_y)[:,:,:,0]
+	# fake_values = tf.reduce_mean(tmp, axis=[1,2])
+	fake_values = tf.reduce_mean(tmp)
+
+
+
+	ux_x = tf.image.sobel_edges(real_data[:,:,:,:1])[:,:,:,:,1]
+	uy_y = tf.image.sobel_edges(real_data[:,:,:,-1:])[:,:,:,:,0]
+	tmp =  (ux_x + uy_y)[:,:,:,0]
+	# real_values = tf.reduce_mean(tmp, axis=[1,2])
+	real_values = tf.reduce_mean(tmp)
+
+
+	return fake_values, real_values
 
 
 

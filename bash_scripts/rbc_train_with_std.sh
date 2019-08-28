@@ -26,6 +26,7 @@ pip install tensorflow-datasets
 
 python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/main.py --dataset rbc_500 --input_channels 2 --start_res 8 \
 	--img_size 256 --gpu_num 4 --progressive True --phase train \
-	--checkpoint_dir ../stored_outputs/rbc_working_with_std/checkpoint --result_dir ../stored_outputs/rbc_working_with_std/result \
+	--checkpoint_dir ../stored_outputs/rbc_working_with_std/checkpoint \
+	--result_dir ../stored_outputs/rbc_working_with_std/result \
 	--log_dir ../stored_outputs/rbc_working_with_std/log --sample_dir ../stored_outputs/rbc_working_with_std/sample  
  

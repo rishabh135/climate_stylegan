@@ -436,6 +436,31 @@ class StyleGAN(object):
 		image_frame_dim = int(np.floor(np.sqrt(self.batch_size)))
 
 
+
+
+
+		# tf_dict_multi_gpu = multi_gpu(num_gpus)
+		# tf.global_variables_initializer().run()
+		# batches = create_input_batches(num_gpus)
+		# multi_gpu_inputs = create_multi_gpu_batches(batches, num_gpus)
+		
+		# for input_batch in multi_gpu_inputs:
+		# 	input_feed_dict = {}
+		# 	output_multi_gpus = []
+		# 	for idx in range(len(tf_dict_multi_gpu)):
+		# 		output_multi_gpus.append(tf_dict_multi_gpu[idx]['out'])
+
+
+
+
+
+
+
+
+
+
+
+
 		generated_image = []
 		saved_seeds = []
 
@@ -454,7 +479,7 @@ class StyleGAN(object):
 			saved_seeds.append(seed)
 
 		generated_images = np.concatenate( generated_image, axis=0 )
-		seeds = np.concatenate(saved_seeds, axis=0)
+		seeds = np.asarray(saved_seeds)
 		
 		Data["generated_images"] = generated_images
 		Data["seeds"] = seeds
@@ -463,7 +488,7 @@ class StyleGAN(object):
 		# if not os.path.exists(result_dir):
 		# 	os.makedirs(result_dir)
 
-		np.save( str(result_dir) + "generator_{}.npy".format(checkpoint_counter), Data)
+		np.save( str(result_dir) + "generator_{}_images_{}.npy".format(checkpoint_counter, self.test_num), Data)
 
 """
 
@@ -478,6 +503,16 @@ uy_average_over_time = my_dict_back.item()["{}_uy".format(image_size)]
 
 
 """
+
+
+# def multi_gpu_model_parallelism(gan, num_gpus=2):
+# 	tf_dict = []
+# 	for i in range(num_gpus):
+# 		with tf.device('/gpu:{}'.format(i)):
+# 			tf_dict.append(gan.build_graph)
+
+
+
 
 
 """parsing and configuration"""
@@ -499,7 +534,7 @@ def parse_args():
 
 	parser.add_argument('--start_res', type=int, default=8, help='The number of starting resolution')
 	parser.add_argument('--img_size', type=int, default=256, help='The target size of image')
-	parser.add_argument('--test_num', type=int, default=2000, help='The number of generating images in the test phase')
+	parser.add_argument('--test_num', type=int, default=200, help='The number of generating images in the test phase')
 	parser.add_argument('--input_channels', type=int, default=2, help='The number of input channels for the input real images')
 	parser.add_argument('--seed', type=str2bool, default=True, help='seed in the draw phase')
 

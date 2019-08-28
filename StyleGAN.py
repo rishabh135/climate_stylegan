@@ -39,9 +39,6 @@ class StyleGAN(object):
 		self.resolutions = resolution_list(self.img_size) # [4, 8, 16, 32, 64, 128, 256, 512, 1024 ...]
 		self.featuremaps = featuremap_list(self.img_size) # [512, 512, 512, 512, 256, 128, 64, 32, 16 ...]
 
-		print("resolutions", self.resolutions)
-		print("feature maps", self.featuremaps)
-
 		if not self.progressive :
 			self.resolutions = [self.resolutions[-1]]
 			self.featuremaps = [self.featuremaps[-1]]
@@ -75,14 +72,13 @@ class StyleGAN(object):
 		self.end_iteration = get_end_iteration(self.iteration, self.max_iteration, self.train_with_trans, self.resolutions, self.start_res)
 		
 
-		print( "self.end_iteration : ", self.end_iteration)
 
 		self.g_learning_rates = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
 		self.d_learning_rates = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
 
 		self.sn = args.sn
 
-		self.print_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 1000, 256: 1000, 512: 10000, 1024: 10000}
+		self.print_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 3000, 256: 5000, 512: 10000, 1024: 10000}
 
 		# self.print_freq = {4: 1000, 8: 500, 16: 500, 32: 500, 64: 100, 128: 100, 256: 10, 512: 10000, 1024: 10000}
 
@@ -106,6 +102,16 @@ class StyleGAN(object):
 			self.dataset = load_data(dataset_name=self.dataset_name)
 			self.dataset_num = len(self.dataset)
 
+
+		"""
+		removing validation phase from the model, i.e. no more saving files at differnet resolutions a
+
+
+		"""
+
+		self.store_images_flag = False
+
+
 		self.sample_dir = os.path.join(self.sample_dir, self.model_dir)
 		check_folder(self.sample_dir)
 
@@ -125,6 +131,9 @@ class StyleGAN(object):
 		print("# gpu : ", self.gpu_num)
 		print("# batch_size in train phase : ", self.batch_sizes)
 		print("# batch_size in test phase : ", self.batch_size)
+		print( "self.end_iteration : ", self.end_iteration)
+		print("resolutions: ", self.resolutions)
+		print("feature maps: ", self.featuremaps)
 
 		print("# start resolution : ", self.start_res)
 		print("# target resolution : ", self.img_size)
@@ -180,7 +189,6 @@ class StyleGAN(object):
 
 				images_out = torgb(x, res, input_channels=self.input_channels, sn=self.sn)
 				
-				print("@@ G_synthesis for images_out first :{} ".format( images_out.shape)) 
 				
 				
 				coarse_styles.pop(res, None)
@@ -192,20 +200,15 @@ class StyleGAN(object):
 
 					x = synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=self.sn)
 
-					print("@@ G_synthesis of x with  res: {}  x:{}  n_f : {} and w_broadcasted : {} ".format( res, x.shape, n_f, w_broadcasted.shape)) 
 
 					img = torgb(x, res, self.input_channels, sn=self.sn)
 
-					print("@@ G_synthesis after torgb  x:{}   input_channels:{} ".format( x.shape, self.input_channels)) 
-					
 				
 					images_out = upscale2d(images_out)
 
-					print("@@ G_synthesis after upscale2d  images_out {}   ".format( images_out.shape)) 
 					
 					images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
 
-					print("@@ G_synthesis after smooth_transition images_out {}   ".format( images_out.shape)) 
 					
 
 					layer_index += 2
@@ -254,7 +257,6 @@ class StyleGAN(object):
 				# else:
 				
 				images_out = torgb(x, resolutions[-1], self.input_channels, sn=self.sn)
-				print("@@ G_synthesis after torgb  images_rgb:{}   x:{} ".format( images_out.shape, x.shape)) 
 	
 			return images_out
 
@@ -271,7 +273,6 @@ class StyleGAN(object):
 			n_broadcast = len(resolutions) * 2
 			w_broadcasted = self.g_mapping(z, n_broadcast)
 
-			print("w_broadcasted : ", w_broadcasted.shape)
 
 			if is_training:
 				""" apply regularization techniques on training """
@@ -281,7 +282,6 @@ class StyleGAN(object):
 				# perform style mixing regularization
 				w_broadcasted = self.style_mixing_regularization(z, w_broadcasted, n_broadcast, resolutions, self.style_mixing_flag)
 
-				print("w_broadcasted _ with _style _mixing :  ", w_broadcasted.shape)
 
 			else :
 				""" apply truncation trick on evaluation """
@@ -292,7 +292,6 @@ class StyleGAN(object):
 
 			x = self.g_synthesis(w_broadcasted, alpha, resolutions, featuremaps)
 
-			print("x after g_synthesis : ", x.shape)
 
 			return x
 
@@ -310,7 +309,6 @@ class StyleGAN(object):
 			r_resolutions = resolutions[::-1]
 			r_featuremaps = featuremaps[::-1]
 
-			print("inside stylegan_dis_block: ", x_init.shape)
 			
 			
 			# """ set inputs """
@@ -327,7 +325,6 @@ class StyleGAN(object):
 				res_next = r_resolutions[index + 1]
 				n_f_next = r_featuremaps[index + 1]
 
-				print("# tf.shape of x with index {} res: {} is {} and n_f : {} and n_f_next : {} ".format(index, res, x.shape, n_f, n_f_next)) 
 				x = discriminator_block(x, res, n_f, n_f_next, self.sn)
 
 				if self.progressive :
@@ -339,15 +336,10 @@ class StyleGAN(object):
 					
 					y = fromrgb(x_init, res_next, n_f_next, self.sn)
 
-					
-					print("########### tf.shape of x before smooth_transition  is {}".format( x.shape))
-					print("########### tf.shape of y before smooth_transition  is {}".format( y.shape))
+
 					 
 
 					x = smooth_transition(y, x, res, r_resolutions[0], alpha)
-
-					print("########### tf.shape of x after smooth_transition   {}".format(x.shape))
-					print("########### tf.shape of y after smooth_transition   {} ".format( y.shape))
 					
 
 			""" last block """
@@ -356,7 +348,6 @@ class StyleGAN(object):
 
 			logit = discriminator_last_block(x, res, n_f, n_f, self.sn)
 
-			print("########### after logists calculated logits: {}".format( x.shape))
 					
 			return logit
 
@@ -421,13 +412,19 @@ class StyleGAN(object):
 
 			self.generator_optim = {}
 			self.discriminator_optim = {}
+
+
 			self.alpha_summary_per_res = {}
-			
 			self.d_summary_per_res = {}
 			self.g_summary_per_res = {}
 
-			self.train_fake_images = {}
-			self.real_images = {}
+			self.alpha_stored_per_res = {}
+			
+
+			if(self.store_images_flag):
+				self.fake_images = {}
+				self.real_images = {}
+
 
 			self.divergence_fake = {}
 			self.divergence_real = {}
@@ -439,8 +436,11 @@ class StyleGAN(object):
 
 				r1_penalty_list = []
 
-				train_fake_images_per_gpu = []
+				fake_images_per_gpu = []
 				real_images_per_gpu = []
+				
+
+
 				batch_size = self.batch_sizes.get(res, self.batch_size_base)
 				global_step = tf.get_variable('global_step_{}'.format(res), shape=[], dtype=tf.float32,
 											  initializer=tf.initializers.zeros(),
@@ -544,22 +544,22 @@ class StyleGAN(object):
 								
 
 								fake_img = self.generator(z, alpha, res)
-								print("fake_img: ",fake_img.shape)
+								# print("fake_img: ",fake_img.shape)
 								
 
 								# if(not self.rbc_data):
 								real_img = smooth_crossfade(real_img, alpha)
 
 
-								print("real_img: ",real_img.shape)
+								# print("real_img: ",real_img.shape)
 
 								real_logit = self.discriminator(real_img, alpha, res)
 
 
 
 
-								print("#########################\n\n\n\n")
-								print("starting fake logits now")
+								# print("#########################\n\n\n\n")
+								# print("starting fake logits now")
 								fake_logit = self.discriminator(fake_img, alpha, res)
 
 								# compute loss
@@ -573,10 +573,10 @@ class StyleGAN(object):
 								# print("\n\n\n")
 								r1_penalty_list.append(r1_penalty)
 								
-								train_fake_images_per_gpu.append(fake_img)
+								fake_images_per_gpu.append(fake_img)
 								real_images_per_gpu.append(real_img)
 
-				print("Create graph for {} resolution".format(res))
+				# print("Create graph for {} resolution".format(res))
 
 				# prepare appropriate training vars
 				d_vars, g_vars = filter_trainable_variables(res)
@@ -584,32 +584,8 @@ class StyleGAN(object):
 				d_loss = tf.reduce_mean(d_loss_per_gpu)
 				g_loss = tf.reduce_mean(g_loss_per_gpu)
 
-				r1_penalty = tf.reduce_mean(r1_penalty_list)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-				self.r1_penalty[res] = r1_penalty
+				self.r1_penalty[res] = tf.reduce_mean(r1_penalty_list)
 
 				d_lr = self.d_learning_rates.get(res, self.learning_rate_base)
 				g_lr = self.g_learning_rates.get(res, self.learning_rate_base)
@@ -635,20 +611,20 @@ class StyleGAN(object):
 				self.g_loss_per_res[res] = g_loss
 
 
-
-				self.train_fake_images[res] = tf.concat(train_fake_images_per_gpu, axis=0)
-				self.real_images[res] = tf.concat(real_images_per_gpu, axis=0)
-
-
+				if(self.store_images_flag):
+					self.fake_images[res] = tf.concat(fake_images_per_gpu, axis=0)
+					self.real_images[res] = tf.concat(real_images_per_gpu, axis=0)
 
 
 
 
 
-				# self.divergence_fake[res], self.divergence_real[res] = calculate_divergence_tf( self.train_fake_images[res][-1000:], self.real_images[res][-1000:])
 
 
+				self.divergence_fake[res], self.divergence_real[res] = calculate_divergence_tf( tf.concat(fake_images_per_gpu, axis=0)[-batch_size * gpu_num:], tf.concat(real_images_per_gpu, axis=0)[-batch_size * gpu_num:])
 
+
+				self.alpha_stored_per_res[res] = alpha
 
 
 
@@ -696,24 +672,19 @@ class StyleGAN(object):
 											   self.start_res, self.img_size, self.gpu_num,
 											   self.end_iteration, self.train_with_trans)
 
-		
-			print("start_res_idx inside could load :" , start_res_idx)
-
 			if not self.progressive :
 				start_res_idx = 0
 
 			start_batch_idx = checkpoint_counter
 
-			print("start_batch_idx inside could load :" , start_batch_idx)
+			# print("start_batch_idx inside could load :" , start_batch_idx)
 			
 			for res_idx in range(self.resolutions.index(self.start_res), start_res_idx) :
 
-				print("res_idx : ", res_idx)
 
 				res = self.resolutions[res_idx]
 				batch_size_per_res = self.batch_sizes.get(res, self.batch_size_base) * self.gpu_num
 
-				print("batch_size_per_res: ", batch_size_per_res)
 
 				if self.train_with_trans[res]:
 					if res == self.img_size :
@@ -783,7 +754,7 @@ class StyleGAN(object):
 																			 self.g_loss_per_res[current_res]])
 
 
-				r1_loss = self.sess.run([self.r1_penalty[current_res]])
+				r1_loss, divergence_fake, divergence_real, alpha = self.sess.run([self.r1_penalty[current_res], self.divergence_fake[res], self.divergence_real[res], self.alpha_stored_per_res[res] ])
 
 				self.writer.add_summary(summary_g_per_res, idx)
 				self.writer.add_summary(summary_alpha, idx)
@@ -795,13 +766,41 @@ class StyleGAN(object):
 				self.experiment.log_metric("d_loss",d_loss,step=counter)
 				self.experiment.log_metric("g_loss",g_loss,step=counter)
 				self.experiment.log_metric("r1_penalty", r1_loss[0],step=counter)
+				self.experiment.log_metric("divergence_real", divergence_real[0], step=counter)
+				self.experiment.log_metric("divergence_fake", divergence_fake[0], step=counter)
+				self.experiment.log_metric("alpha value ", alpha[0], step=counter)
+
+
 
 				
-				print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
+				print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  r1_loss: %.8f " \
 					  % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss))
 
-				if np.mod(idx + 1, self.print_freq[current_res]) == 0:
-					samples = self.sess.run(self.train_fake_images[current_res])
+
+
+				"""
+
+				function to save iteration or not
+
+				"""
+
+
+				if np.mod(idx + 1, self.save_freq[current_res]) == 0:
+					self.save(self.checkpoint_dir, counter)
+
+
+
+				"""
+
+				function to plot images and their divergence plots
+
+				"""
+
+
+				if ((np.mod(idx + 1, self.print_freq[current_res]) == 0) and self.store_images_flag):
+
+
+					samples = self.sess.run(self.fake_images[current_res])
 
 					"""
 						Also plotting real samples for transparency purposes
@@ -856,7 +855,11 @@ class StyleGAN(object):
 
 						# print("Current res: real images.shape : {} , generated shape : {}  ".format( self.real_images_stored.shape[0], self.generated_images_stored.shape[0] ))
 							
+						"""
+						it now starts to check if the number of stored images is atleast > self.plotting_hitogram_images (which by default is 64)
 
+
+						"""
 						if(len(self.real_images_stored)* self.real_images_stored[0].shape[0] >= self.plotting_histogram_images):
 
 
@@ -914,8 +917,7 @@ class StyleGAN(object):
 					# 	save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
 					# 				'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.rbc_data)
 
-				if np.mod(idx + 1, self.save_freq[current_res]) == 0:
-					self.save(self.checkpoint_dir, counter)
+
 
 			# After an epoch, start_batch_idx is set to zero
 			# non-zero value is only for the first epoch after loading pre-trained model
@@ -927,11 +929,6 @@ class StyleGAN(object):
 				shape :  NHWC    (c=2 in this case)
 						
 			"""
-
-
-
-
-
 			# save model
 			self.save(self.checkpoint_dir, counter)
 
