@@ -1,0 +1,5 @@
+Large scale generative modeling of climate change has come to forefront with recent advances in modeling natural image data. Reliable and high quality climate data simulations are very important to study, research and predict weather patterns. Style-GANs with their large expressive power and ability to separate high-level attributes  
+
+
+
+usign style to incorporate 

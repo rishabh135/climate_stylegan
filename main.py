@@ -29,7 +29,7 @@ def parse_args():
 	parser = argparse.ArgumentParser(description=desc)
 	parser.add_argument('--phase', type=str, default='train', help='[train, test, draw]')
 	parser.add_argument('--draw', type=str, default='uncurated', help='[uncurated, style_mix, truncation_trick]')
-	parser.add_argument('--dataset', type=str, default= "FFHQ_128", help='The dataset name what you want to generate')
+	parser.add_argument('--dataset', type=str, default= "rbc_3500", help='The dataset name what you want to generate')
 
 	parser.add_argument('--iteration', type=int, default=120, help='The number of images used in the train phase')
 	parser.add_argument('--max_iteration', type=int, default=2500, help='The total number of images')
@@ -57,9 +57,12 @@ def parse_args():
 						help='Directory name to save the samples on training')
 
 
+	parser.add_argument('--divergence_loss_flag', type=bool, default= False,
+						help='should there be added term to the g_loss from divergence , default is false')
+
+
 	parser.add_argument('--style_mixing_flag', type=bool, default= False,
 						help='should there be style mixing of two latents from g_mapping network , default is false')
-
 
 
 	parser.add_argument('--dataset_location', type=str, default="/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/rbc_500/max/",

@@ -399,49 +399,25 @@ class StyleGAN(object):
 		alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
 		self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
 
-	def load(self, checkpoint_dir, counter):
+		return self.fake_images
 
+	def load(self, checkpoint_dir):
+		print(" [*] Reading checkpoints...")
 		checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
-		print(" [*] Reading checkpoints from  {} with counter {} ".format(checkpoint_dir, counter))
 
-		if(counter == 0):
-
-			states = tf.train.get_checkpoint_state(checkpoint_dir)
-			checkpoint_paths = states.all_model_checkpoint_paths
-			load_model_path = checkpoint_paths[-1]
-
-		else:
-			load_model_path =  os.path.join(checkpoint_dir,  self.model_name) + "/StyleGAN.model-{}".format(counter)
-
-
-
-
-		# "../stored_outputs/one_seventh_divergence/checkpoint/StyleGAN_rbc_3500_8to256_progressive/StyleGAN.model-315468"
-
-		try:
-			self.saver.restore(self.sess, load_model_path)
-			print(" [*] Success to read {}".format(load_model_path))
-			counter = int(load_model_path.split('-')[-1])
+		ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+		if ckpt and ckpt.model_checkpoint_path:
+			ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
+			self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
+			counter = int(ckpt_name.split('-')[-1])
+			print(" [*] Success to read {}".format(ckpt_name))
 			return True, counter
-
-		except:
-
+		else:
 			print(" [*] Failed to find a checkpoint")
-			return False, -1
+			return False, 0
 
-		# # ckpt = tf.train.checkpoint(checkpoint_dir, latest_filename= "StyleGAN.model-"+ str(counter) + ".data-00000-of-00001")
 
-		# # ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-
-		# if ckpt and ckpt.model_checkpoint_path:
-
-		# 	ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
-		# 	self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
-		# 	counter = int(ckpt_name.split('-')[-1])
-		
-	
-
-	def test(self, counter):
+	def test(self):
 
 		print("Entered test phase successfully")
 		tf.global_variables_initializer().run()
@@ -450,15 +426,12 @@ class StyleGAN(object):
 
 		self.saver = tf.train.Saver()
 		
-		# could_load, checkpoint_counter = self.load(self.checkpoint_dir)
-		
-		could_load, checkpoint_counter = self.load(self.checkpoint_dir, counter)
-
+		could_load, checkpoint_counter = self.load(self.checkpoint_dir)
 		result_dir = os.path.join(self.result_dir, "single_generator_results/")
 		check_folder(result_dir)
 
 		if could_load:
-			print(" [*] Load SUCCESS with checkpoint counter {}".format(checkpoint_counter))
+			print(" [*] Load SUCCESS")
 		else:
 			print(" [!] Load failed...")
 
@@ -499,8 +472,8 @@ class StyleGAN(object):
 			# if self.batch_size == 1:
 
 
-			seed = np.random.randint(low=0, high=10000)
-			test_z = tf.cast(np.random.RandomState(seed).normal(size=[self.batch_size, self.z_dim]), tf.float32)
+			# seed = np.random.randint(low=0, high=10000)
+			# test_z = tf.cast(np.random.RandomState(seed).normal(size=[self.batch_size, self.z_dim]), tf.float32)
 			alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
 			self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
 			samples = self.sess.run(self.fake_images)
@@ -516,14 +489,8 @@ class StyleGAN(object):
 				
 		# if not os.path.exists(result_dir):
 		# 	os.makedirs(result_dir)
-		save_file_path = str(result_dir) + "generator_{}_images_{}.npy".format(checkpoint_counter, self.test_num)
-		trial = 0
-		while(os.path.isfile(save_file_path)):
-			trial += 1
-			save_file_path = str(result_dir) + "generator_{}_images_{}_file_{}.npy".format(checkpoint_counter, self.test_num, trial )
 
-		np.save( save_file_path, Data)
-		print("Operation completed")
+		np.save( str(result_dir) + "generator_{}_images_{}.npy".format(checkpoint_counter, self.test_num), Data)
 
 """
 
@@ -541,12 +508,19 @@ uy_average_over_time = my_dict_back.item()["{}_uy".format(image_size)]
 
 
 # def multi_gpu_model_parallelism(gan, num_gpus=2):
-# 	tf_dict = []
+# 	tf_models = []
 # 	for i in range(num_gpus):
 # 		with tf.device('/gpu:{}'.format(i)):
-# 			tf_dict.append(gan.build_graph)
+# 			tf_models.append(gan.build_graph)
+# 	return tf_models
 
 
+
+# def create_multi_gpu_batches(inputs, num_gpus=2):
+# 	multi_gpu_inputs = []
+# 	for i in range(0, len(inputs), num_gpus):
+# 		multi_gpu_inputs.append(tuple(inputs[i:i+num_gpus]))
+# 	return multi_gpu_inputs
 
 
 
@@ -569,9 +543,7 @@ def parse_args():
 
 	parser.add_argument('--start_res', type=int, default=8, help='The number of starting resolution')
 	parser.add_argument('--img_size', type=int, default=256, help='The target size of image')
-	
-	parser.add_argument('--test_num', type=int, default=50, help='The number of generating images in the test phase')
-	
+	parser.add_argument('--test_num', type=int, default=200, help='The number of generating images in the test phase')
 	parser.add_argument('--input_channels', type=int, default=2, help='The number of input channels for the input real images')
 	parser.add_argument('--seed', type=str2bool, default=True, help='seed in the draw phase')
 
@@ -598,11 +570,6 @@ def parse_args():
 						help='dataset_directory')
 
 
-	parser.add_argument('--counter_number', type=int, default=0,
-						help='number of the model to be loaded (0 makes it load the latest model)')
-
-
-
 	return check_args(parser.parse_args())
 
 """checking arguments"""
@@ -611,7 +578,7 @@ def check_args(args):
 	# import comet_ml in the top of your file
 
 	experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa",
-								project_name="inference_{}".format(args.name_experiment, args.dataset), workspace="style-gan")
+								project_name="testing_{}".format(args.name_experiment, args.dataset), workspace="style-gan")
 
 
 
@@ -646,20 +613,25 @@ def main():
 	if args is None:
 		exit()
 
+	gan = StyleGAN(sess, args, experiment)
+	tf_dict_multi_gpu = multi_gpu_model_parallelism(gan, args.num_gpus)
+	init = tf.global_variables_initializer()
+
+
+
 	# open session
 	# Assume that you have 12GB of GPU memory and want to allocate ~4GB:
 	gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9, allow_growth = True)
 	
 	with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
 		with experiment.train():
-			gan = StyleGAN(sess, args, experiment)
-
+			
 			# build graph
-			gan.build_model()
+			# gan.build_model()
 
 			# show network architecture
-			show_all_variables()
-			gan.test(args.counter_number)
+			# show_all_variables()
+			gan.test()
 			print(" [*] Test finished!")
 
 			# experiment.set_model_graph(sess.graph)

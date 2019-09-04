@@ -383,7 +383,7 @@ def calculate_divergence_tf(generated_data, real_data):
 	uy_y = tf.image.sobel_edges(generated_data[:,:,:,-1:])[:,:,:,:,0]
 	tmp =  (ux_x + uy_y)[:,:,:,0]
 	# fake_values = tf.reduce_mean(tmp, axis=[1,2])
-	fake_values = tf.reduce_mean(tmp)
+	fake_values = tf.math.abs(tf.reduce_mean(tmp))
 
 
 
@@ -391,7 +391,7 @@ def calculate_divergence_tf(generated_data, real_data):
 	uy_y = tf.image.sobel_edges(real_data[:,:,:,-1:])[:,:,:,:,0]
 	tmp =  (ux_x + uy_y)[:,:,:,0]
 	# real_values = tf.reduce_mean(tmp, axis=[1,2])
-	real_values = tf.reduce_mean(tmp)
+	real_values = tf.math.abs(tf.reduce_mean(tmp))
 
 
 	return fake_values, real_values

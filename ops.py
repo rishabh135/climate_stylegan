@@ -217,31 +217,31 @@ def discriminator_block(x, res, n_f0, n_f1, sn=False):
 
 def discriminator_last_block(x, res, n_f0, n_f1, sn=False):
 
-	print("last_block:  x shape: {}   res: {} n_f0: {}   n_f1: {}".format(x.shape, res, n_f0, n_f1) )
+	# print("last_block:  x shape: {}   res: {} n_f0: {}   n_f1: {}".format(x.shape, res, n_f0, n_f1) )
 
 	with tf.variable_scope('{:d}x{:d}'.format(res, res)):
 		x = minibatch_stddev_layer(x, group_size=4, num_new_features=1)
 
-		print("lastblock after minibatch_stddev_layer:  x shape{}".format(x.shape) )
+		# print("lastblock after minibatch_stddev_layer:  x shape{}".format(x.shape) )
 	
 		with tf.variable_scope('Conv0'):
 			x = conv(x, channels=n_f0, kernel=3, stride=1, gain=np.sqrt(2), lrmul=1.0, sn=sn)
 			x = apply_bias(x, lrmul=1.0)
 			x = lrelu(x, 0.2)
 
-		print("lastblock after conv0:  x shape{}".format(x.shape) )
+		# print("lastblock after conv0:  x shape{}".format(x.shape) )
 		with tf.variable_scope('Dense0'):
 			x = fully_connected(x, units=n_f1, gain=np.sqrt(2), lrmul=1.0, sn=sn)
 			x = apply_bias(x, lrmul=1.0)
 			x = lrelu(x, 0.2)
 		
-		print("lastblock after dense0:  x shape{}".format(x.shape) )
+		# print("lastblock after dense0:  x shape{}".format(x.shape) )
 		with tf.variable_scope('Dense1'):
 			x = fully_connected(x, units=1, gain=1.0, lrmul=1.0, sn=sn)
 			x = apply_bias(x, lrmul=1.0)
 
-		print("lastblock after dense1:  x shape{}".format(x.shape) )
-		print("***************\n\n\n")
+		# print("lastblock after dense1:  x shape{}".format(x.shape) )
+		# print("***************\n\n\n")
 	return x
 
 ##################################################################################

@@ -12,6 +12,8 @@ import numpy as np
 import PIL.Image
 from tqdm import tqdm
 
+from RAdam import RAdamOptimizer
+
 class StyleGAN(object):
 
 	def __init__(self, sess, args, experiment):
@@ -20,6 +22,7 @@ class StyleGAN(object):
 		self.experiment = experiment
 		self.phase = args.phase
 		self.progressive = args.progressive
+		self.divergence_loss_flag = False
 		self.model_name = "StyleGAN"
 		self.sess = sess
 		self.dataset_name = args.dataset
@@ -47,6 +50,8 @@ class StyleGAN(object):
 		self.gpu_num = args.gpu_num
 
 		self.style_mixing_flag = args.style_mixing_flag
+		self.divergence_lambda = 10
+
 		self.z_dim = 512
 		self.w_dim = 512
 		self.n_mapping = 8
@@ -141,6 +146,9 @@ class StyleGAN(object):
 
 		print("# progressive training : ", self.progressive)
 		print("# spectral normalization : ", self.sn)
+		print("# store images: {}".format(self.store_images_flag))
+		print("# use divergence in loss: {}".format(self.divergence_loss_flag))
+
 
 		print("\n\n")
 
@@ -386,7 +394,7 @@ class StyleGAN(object):
 									 w_broadcasted,
 									 w_broadcasted2)
 
-		print("Inside style mixing the w_broadcasted = {} and layer_indices {} ".format(w_broadcasted.shape, layer_indices))
+		# print("Inside style mixing the w_broadcasted = {} and layer_indices {} ".format(w_broadcasted.shape, layer_indices))
 		return w_broadcasted
 
 	def truncation_trick(self, n_broadcast, w_broadcasted, w_avg, truncation_psi):
@@ -484,7 +492,6 @@ class StyleGAN(object):
 									dataset = dataset.map(lambda s: tf.image.resize( tf.transpose(tf.reshape(tf.decode_raw(s, dtype), [2,256,256]) , perm=[1,2,0]), size=[res, res], method=tf.image.ResizeMethod.BILINEAR), num_parallel_calls=4)
  
 
-									print("dataset : ", type(dataset))
 
 
 
@@ -507,8 +514,8 @@ class StyleGAN(object):
 									inputs_iterator = inputs.make_one_shot_iterator()
 									real_img  = inputs_iterator.get_next()
 									real_img  = tf.reshape( real_img ,(batch_size, res , res, self.input_channels))
-									print("real img: ",type(real_img))									
-									print("real_img.shape: ",real_img.shape)
+									# print("real img: ",type(real_img))									
+									# print("real_img.shape: ",real_img.shape)
 									# real_img.set_shape([None, self.img_size, None, self.input_channels])
 									
 	
@@ -535,8 +542,8 @@ class StyleGAN(object):
 									# When using dataset.prefetch, use buffer_size=None to let it detect optimal buffer size
 									inputs_iterator = inputs.make_one_shot_iterator()
 									real_img = inputs_iterator.get_next()
-									print("real img: ",type(real_img))									
-									print("real_img.shape: ",real_img.shape)
+									# print("real img: ",type(real_img))									
+									# print("real_img.shape: ",real_img.shape)
 
 
 								z = tf.random_normal(shape=[batch_size, self.z_dim])
@@ -578,12 +585,23 @@ class StyleGAN(object):
 
 				# print("Create graph for {} resolution".format(res))
 
+
+
+				self.divergence_fake[res], self.divergence_real[res] = calculate_divergence_tf( tf.concat(fake_images_per_gpu, axis=0)[-batch_size * self.gpu_num:], tf.concat(real_images_per_gpu, axis=0)[-batch_size * self.gpu_num:])
+
 				# prepare appropriate training vars
 				d_vars, g_vars = filter_trainable_variables(res)
 
 				d_loss = tf.reduce_mean(d_loss_per_gpu)
 				g_loss = tf.reduce_mean(g_loss_per_gpu)
 
+				"""
+				adding divergence as an added loss to the generator
+
+				"""
+
+				if(self.divergence_loss_flag):
+					g_loss += self.divergence_lambda * self.divergence_fake[res]
 
 				self.r1_penalty[res] = tf.reduce_mean(r1_penalty_list)
 
@@ -595,14 +613,29 @@ class StyleGAN(object):
 				else :
 					colocate_grad = True
 
+				
+
+
+
+				# d_optim = RAdamOptimizer(learning_rate=0.001, beta1=0.9, beta2=0.999, weight_decay=0.0)\
+				# 			.minimize(d_loss,var_list=d_vars,colocate_gradients_with_ops=colocate_grad)
+
+
+
 				d_optim = tf.train.AdamOptimizer(d_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(d_loss,
 																									 var_list=d_vars,
 																									 colocate_gradients_with_ops=colocate_grad)
+
+				# g_optim = RAdamOptimizer(learning_rate= 0.001, beta1=0.9, beta2=0.999, weight_decay=0.0)\
+				# 	.minimize(g_loss, var_list=g_vars, global_step=global_step, colocate_gradients_with_ops=colocate_grad)
+				
+
 
 				g_optim = tf.train.AdamOptimizer(g_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(g_loss,
 																									 var_list=g_vars,
 																									 global_step=global_step,
 																									 colocate_gradients_with_ops=colocate_grad)
+
 
 				self.discriminator_optim[res] = d_optim
 				self.generator_optim[res] = g_optim
@@ -621,7 +654,6 @@ class StyleGAN(object):
 
 
 
-				self.divergence_fake[res], self.divergence_real[res] = calculate_divergence_tf( tf.concat(fake_images_per_gpu, axis=0)[-batch_size * gpu_num:], tf.concat(real_images_per_gpu, axis=0)[-batch_size * gpu_num:])
 
 
 				self.alpha_stored_per_res[res] = alpha
@@ -651,7 +683,7 @@ class StyleGAN(object):
 		tf.global_variables_initializer().run()
 
 		# saver to save model
-		self.saver = tf.train.Saver(max_to_keep=10)
+		self.saver = tf.train.Saver(max_to_keep=10, keep_checkpoint_every_n_hours=2)
 		# self.experiment.set_model_graph(self.sess.graph)
 
 		# summary writer
@@ -754,7 +786,7 @@ class StyleGAN(object):
 																			 self.g_loss_per_res[current_res]])
 
 
-				r1_loss, divergence_fake, divergence_real, alpha = self.sess.run([self.r1_penalty[current_res], self.divergence_fake[res], self.divergence_real[res], self.alpha_stored_per_res[res] ])
+				r1_loss, divergence_fake, divergence_real, alpha = self.sess.run([self.r1_penalty[current_res], self.divergence_fake[current_res], self.divergence_real[current_res], self.alpha_stored_per_res[current_res] ])
 
 				self.writer.add_summary(summary_g_per_res, idx)
 				self.writer.add_summary(summary_alpha, idx)
@@ -765,16 +797,16 @@ class StyleGAN(object):
 
 				self.experiment.log_metric("d_loss",d_loss,step=counter)
 				self.experiment.log_metric("g_loss",g_loss,step=counter)
-				self.experiment.log_metric("r1_penalty", r1_loss[0],step=counter)
-				self.experiment.log_metric("divergence_real", divergence_real[0], step=counter)
-				self.experiment.log_metric("divergence_fake", divergence_fake[0], step=counter)
-				self.experiment.log_metric("alpha value ", alpha[0], step=counter)
+				self.experiment.log_metric("r1_penalty", r1_loss,step=counter)
+				self.experiment.log_metric("divergence_real", divergence_real, step=counter)
+				self.experiment.log_metric("divergence_fake", divergence_fake, step=counter)
+				self.experiment.log_metric("alpha value ", alpha, step=counter)
 
 
 
 				
-				print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  r1_loss: %.8f " \
-					  % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss))
+				print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  divergence_fake : %.4f" \
+					  % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha, divergence_fake))
 
 
 

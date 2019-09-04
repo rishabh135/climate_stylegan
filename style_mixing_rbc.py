@@ -399,131 +399,280 @@ class StyleGAN(object):
 		alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
 		self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
 
+
+
+
+
 	def load(self, checkpoint_dir, counter):
-
+		print(" [*] Reading checkpoints...")
 		checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
-		print(" [*] Reading checkpoints from  {} with counter {} ".format(checkpoint_dir, counter))
 
-		if(counter == 0):
+		# ckpt = tf.train.get_checkpoint_state(checkpoint_dir, latest_filename= "StyleGAN.model-"+ str(counter))
 
-			states = tf.train.get_checkpoint_state(checkpoint_dir)
-			checkpoint_paths = states.all_model_checkpoint_paths
-			load_model_path = checkpoint_paths[-1]
+		ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
 
-		else:
-			load_model_path =  os.path.join(checkpoint_dir,  self.model_name) + "/StyleGAN.model-{}".format(counter)
+		if ckpt and ckpt.model_checkpoint_path:
 
-
-
-
-		# "../stored_outputs/one_seventh_divergence/checkpoint/StyleGAN_rbc_3500_8to256_progressive/StyleGAN.model-315468"
-
-		try:
-			self.saver.restore(self.sess, load_model_path)
-			print(" [*] Success to read {}".format(load_model_path))
-			counter = int(load_model_path.split('-')[-1])
+			ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
+			self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
+			counter = int(ckpt_name.split('-')[-1])
+			print(" [*] Success to read {}".format(ckpt_name))
 			return True, counter
-
-		except:
-
+		else:
 			print(" [*] Failed to find a checkpoint")
-			return False, -1
+			return False, 0
 
-		# # ckpt = tf.train.checkpoint(checkpoint_dir, latest_filename= "StyleGAN.model-"+ str(counter) + ".data-00000-of-00001")
 
-		# # ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
 
-		# if ckpt and ckpt.model_checkpoint_path:
 
-		# 	ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
-		# 	self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
-		# 	counter = int(ckpt_name.split('-')[-1])
-		
-	
 
-	def test(self, counter):
-
-		print("Entered test phase successfully")
+	def draw_style_mixing_figure(self, saved_numpy_file_of_rbc_images):
 		tf.global_variables_initializer().run()
-
-		print("intitialized tensorflow variable")
-
 		self.saver = tf.train.Saver()
-		
-		# could_load, checkpoint_counter = self.load(self.checkpoint_dir)
-		
-		could_load, checkpoint_counter = self.load(self.checkpoint_dir, counter)
 
-		result_dir = os.path.join(self.result_dir, "single_generator_results/")
+
+		saved_numpy_file_of_rbc_images = 
+
+		result_dir = os.path.join(self.result_dir, 'style_mixing_figure/')
 		check_folder(result_dir)
 
+
+		load_path = os.path.join(self.result_dir , saved_numpy_file_of_rbc_images)
+		my_dict_back = np.load(load_path, allow_pickle=True)
+
+		# using re.findall() 
+		# getting numbers from string  
+		regex_for_numbers = re.findall(r'\d+', load_path ) 
+		res = list(map(int, regex_for_numbers)) 
+		
+
+		counter = res[-2]
+		print("Loaded correct checkpoint with counter {}".format(counter))
+
+		could_load, checkpoint_counter = self.load(self.checkpoint_dir, counter)
+		
 		if could_load:
-			print(" [*] Load SUCCESS with checkpoint counter {}".format(checkpoint_counter))
+			print(" [*] Load SUCCESS")
 		else:
 			print(" [!] Load failed...")
 
-		image_frame_dim = int(np.floor(np.sqrt(self.batch_size)))
+
+		# generated_images = my_dict_back.item()["generated_images"][:11]
+		total_seeds = my_dict_back.item()["seeds"][:11]
+
+
+		src_seeds = total_seeds[:2]
+		dst_seeds = total_seeds[5:]
+		# src_seeds = [604, 8440, 7613, 6978, 3004]
+		# dst_seeds = [1336, 6968, 607, 728, 7036, 9010]
+
+		resolutions = resolution_list(self.img_size)
+		featuremaps = featuremap_list(self.img_size)
+		n_broadcast = len(resolutions) * 2
+
+		style_ranges = [range(0, 4)] * 3 + [range(4, 8)] * 2 + [range(8, n_broadcast)]
+		print("style ranged originally {} ".format(style_ranges))
+		alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
+		if self.seed :
+			src_latents = tf.cast(np.concatenate(list(np.random.RandomState(seed).normal(size=[1, self.z_dim]) for seed in src_seeds), axis=0), tf.float32)
+			dst_latents = tf.cast(np.concatenate(list(np.random.RandomState(seed).normal(size=[1, self.z_dim]) for seed in dst_seeds), axis=0), tf.float32)
+
+		else :
+			src_latents = tf.cast(np.random.normal(size=[len(src_seeds), self.z_dim]), tf.float32)
+			dst_latents = tf.cast(np.random.normal(size=[len(dst_seeds), self.z_dim]), tf.float32)
+
+
+
+		print("\n\n\n")
+		print("size of src latent {} and that of dst_latents {} ".format(src_latents.shape, dst_latents.shape))
+
+
+		with tf.variable_scope('generator', reuse=tf.AUTO_REUSE) :
+
+			src_dlatents = self.g_mapping(src_latents, n_broadcast)
+			dst_dlatents = self.g_mapping(dst_latents, n_broadcast)
+
+
+			print("size of src dlatent {} and that of dst_dlatents {} ".format(src_dlatents.shape, dst_dlatents.shape))
+
+
+			dlatent_avg = tf.get_variable('w_avg')
+
+			# src_dlatents = self.truncation_trick(n_broadcast, src_dlatents, dlatent_avg, self.truncation_psi)
+			# dst_dlatents = self.truncation_trick(n_broadcast, dst_dlatents, dlatent_avg, self.truncation_psi)
+
+			src_images = self.sess.run(self.g_synthesis(src_dlatents, alpha, resolutions, featuremaps))
+			dst_images = self.sess.run(self.g_synthesis(dst_dlatents, alpha, resolutions, featuremaps))
+
+			# for i in range(len(src_images)):
+			# 	src_images[i] = post_process_generator_output(src_images[i])
+
+			# for i in range(len(dst_images)):
+			# 	dst_images[i] = post_process_generator_output(dst_images[i])
+
+			src_dlatents = self.sess.run(src_dlatents)
+			dst_dlatents = self.sess.run(dst_dlatents)
+
+			# canvas = PIL.Image.new('RGB', (self.img_size * (len(src_seeds) + 1), self.img_size * (len(dst_seeds) + 1)), 'white')
+			print("sess.run size {} and that of dst_dlatents after {} ".format(src_dlatents.shape, dst_dlatents.shape))
+
+
+			print("\n\n\n")
+			
+
+
+			fig = plt.figure(figsize=(8, 20))				
+			idx = 1
+
+
+			"""
+
+			plot an empty image for future use
+
+			"""
+
+			ax = fig.add_subplot( len(dst_seeds)+1, len(src_seeds)+1,  idx)
+			idx += 1
+			ax.imshow(src_images[0,:,:,0])
+			# plt.title('src_image_{}'.format(col), fontsize='xx-small')
+			# ax.xticks([])
+			# ax.yticks([])
+			ax.set_visible(False)
+
+
+
+			for col, src_image in enumerate(list(src_images)):
+				fig.add_subplot( len(dst_seeds)+1, len(src_seeds)+1,  idx)
+				idx += 1
+				plt.imshow(src_image[ :, : , 0])
+				plt.title('src_image_{}'.format(col), fontsize='small')
+				plt.xticks([])
+				plt.yticks([])		
+				# canvas.paste(PIL.Image.fromarray(np.uint8(src_image), 'RGB'), ((col + 1) * self.img_size, 0))
+
+			for row, dst_image in enumerate(list(dst_images)):
+
+				# canvas.paste(PIL.Image.fromarray(np.uint8(dst_image), 'RGB'), (0, (row + 1) * self.img_size))
+
+				fig.add_subplot( len(dst_seeds)+1, len(src_seeds)+1,  idx)
+				idx += 1
+				plt.imshow(dst_image[ :, : , 0])
+				plt.title('dst_image_{}'.format(row), fontsize='small')
+				plt.xticks([])
+				plt.yticks([])
+
+				row_dlatents = np.stack([dst_dlatents[row]] * len(src_seeds))
+				print("src_dlatents : {} ".format(src_dlatents[:, :, 0]))
+				print("\n")
+				print("style_ranges : {} with size of row_dlatents {} \n  and row_dlatents original : {}".format(style_ranges[row], row_dlatents.shape, row_dlatents[:,:,0]))
+				row_dlatents[:, style_ranges[row]] = src_dlatents[:, style_ranges[row]]
+
+				print("\n")
+				print("row_dlatents after modifying style {} ".format(row_dlatents[:,:,0]))
+				print("*************************\n\n")
+				row_images = self.sess.run(self.g_synthesis(tf.convert_to_tensor(row_dlatents, tf.float32), alpha, resolutions, featuremaps))
+
+				# for i in range(len(row_images)):
+				# 	row_images[i] = post_process_generator_output(row_images[i])
+
+				for col, image in enumerate(list(row_images)):
+					fig.add_subplot(  len(dst_seeds)+1, len(src_seeds)+1,  idx)
+					idx += 1
+					plt.imshow(image[ :, : , 0])
+					plt.title('row_image_{}'.format(col), fontsize='small')
+					plt.xticks([])
+					plt.yticks([])	
+					# canvas.paste(PIL.Image.fromarray(np.uint8(image), 'RGB'), ((col + 1) * self.img_size, (row + 1) * self.img_size))
+
+			plt.subplots_adjust( hspace=0, wspace=0)
+			fig.tight_layout()
+			plt.savefig( '{}/figure03-style-mixing_ux.jpg'.format(result_dir) , dpi = 400)
 
 
 
 
 
-		# tf_dict_multi_gpu = multi_gpu(num_gpus)
-		# tf.global_variables_initializer().run()
-		# batches = create_input_batches(num_gpus)
-		# multi_gpu_inputs = create_multi_gpu_batches(batches, num_gpus)
+
+
+	# def test(self):
+
+	# 	print("Entered test phase successfully")
+	# 	tf.global_variables_initializer().run()
+
+	# 	print("intitialized tensorflow variable")
+
+	# 	self.saver = tf.train.Saver()
 		
-		# for input_batch in multi_gpu_inputs:
-		# 	input_feed_dict = {}
-		# 	output_multi_gpus = []
-		# 	for idx in range(len(tf_dict_multi_gpu)):
-		# 		output_multi_gpus.append(tf_dict_multi_gpu[idx]['out'])
+	# 	could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+	# 	result_dir = os.path.join(self.result_dir, "single_generator_results/")
+	# 	check_folder(result_dir)
+
+	# 	if could_load:
+	# 		print(" [*] Load SUCCESS")
+	# 	else:
+	# 		print(" [!] Load failed...")
+
+	# 	image_frame_dim = int(np.floor(np.sqrt(self.batch_size)))
 
 
 
 
 
-
-
-
-
-
-
-
-		generated_image = []
-		saved_seeds = []
-
-		Data = {}
-		for i in tqdm(range(self.test_num)):
-
-			# if self.batch_size == 1:
-
-
-			seed = np.random.randint(low=0, high=10000)
-			test_z = tf.cast(np.random.RandomState(seed).normal(size=[self.batch_size, self.z_dim]), tf.float32)
-			alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
-			self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
-			samples = self.sess.run(self.fake_images)
-			generated_image.append(samples)
-			saved_seeds.append(seed)
-
-		generated_images = np.concatenate( generated_image, axis=0 )
-		seeds = np.asarray(saved_seeds)
+	# 	# tf_dict_multi_gpu = multi_gpu(num_gpus)
+	# 	# tf.global_variables_initializer().run()
+	# 	# batches = create_input_batches(num_gpus)
+	# 	# multi_gpu_inputs = create_multi_gpu_batches(batches, num_gpus)
 		
-		Data["generated_images"] = generated_images
-		Data["seeds"] = seeds
+	# 	# for input_batch in multi_gpu_inputs:
+	# 	# 	input_feed_dict = {}
+	# 	# 	output_multi_gpus = []
+	# 	# 	for idx in range(len(tf_dict_multi_gpu)):
+	# 	# 		output_multi_gpus.append(tf_dict_multi_gpu[idx]['out'])
+
+
+
+
+
+
+
+
+
+
+
+
+	# 	generated_image = []
+	# 	saved_seeds = []
+
+	# 	Data = {}
+	# 	for i in tqdm(range(self.test_num)):
+
+	# 		# if self.batch_size == 1:
+
+
+	# 		seed = np.random.randint(low=0, high=10000)
+	# 		test_z = tf.cast(np.random.RandomState(seed).normal(size=[self.batch_size, self.z_dim]), tf.float32)
+	# 		alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
+	# 		self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
+	# 		samples = self.sess.run(self.fake_images)
+	# 		generated_image.append(samples)
+	# 		saved_seeds.append(seed)
+
+	# 	generated_images = np.concatenate( generated_image, axis=0 )
+	# 	seeds = np.asarray(saved_seeds)
+		
+	# 	Data["generated_images"] = generated_images
+	# 	Data["seeds"] = seeds
 
 				
-		# if not os.path.exists(result_dir):
-		# 	os.makedirs(result_dir)
-		save_file_path = str(result_dir) + "generator_{}_images_{}.npy".format(checkpoint_counter, self.test_num)
-		trial = 0
-		while(os.path.isfile(save_file_path)):
-			trial += 1
-			save_file_path = str(result_dir) + "generator_{}_images_{}_file_{}.npy".format(checkpoint_counter, self.test_num, trial )
+	# 	# if not os.path.exists(result_dir):
+	# 	# 	os.makedirs(result_dir)
 
-		np.save( save_file_path, Data)
-		print("Operation completed")
+	# 	np.save( str(result_dir) + "generator_{}_images_{}.npy".format(checkpoint_counter, self.test_num), Data)
+
+
+
+
+
 
 """
 
@@ -569,9 +718,7 @@ def parse_args():
 
 	parser.add_argument('--start_res', type=int, default=8, help='The number of starting resolution')
 	parser.add_argument('--img_size', type=int, default=256, help='The target size of image')
-	
-	parser.add_argument('--test_num', type=int, default=50, help='The number of generating images in the test phase')
-	
+	parser.add_argument('--test_num', type=int, default=200, help='The number of generating images in the test phase')
 	parser.add_argument('--input_channels', type=int, default=2, help='The number of input channels for the input real images')
 	parser.add_argument('--seed', type=str2bool, default=True, help='seed in the draw phase')
 
@@ -589,6 +736,13 @@ def parse_args():
 						help='should there be style mixing of two latents from g_mapping network , default is false')
 
 
+	parser.add_argument('--saved_numpy_file_of_rbc_images', type=str, default="single_generator_results/generator_122343_images_200.npy" , help="numpy file from which the latents are sourced")
+
+
+
+
+
+
 
 	parser.add_argument('--dataset_location', type=str, default="/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/rbc_500/max/",
 						help='dataset_directory')
@@ -596,11 +750,6 @@ def parse_args():
 
 	parser.add_argument('--name_experiment', type=str, default="",
 						help='dataset_directory')
-
-
-	parser.add_argument('--counter_number', type=int, default=0,
-						help='number of the model to be loaded (0 makes it load the latest model)')
-
 
 
 	return check_args(parser.parse_args())
@@ -611,7 +760,7 @@ def check_args(args):
 	# import comet_ml in the top of your file
 
 	experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa",
-								project_name="inference_{}".format(args.name_experiment, args.dataset), workspace="style-gan")
+								project_name="post_analyzing_{}".format(args.name_experiment, args.dataset), workspace="style-gan")
 
 
 
@@ -659,7 +808,7 @@ def main():
 
 			# show network architecture
 			show_all_variables()
-			gan.test(args.counter_number)
+			gan.draw_style_mixing_figure(args.saved_numpy_file_of_rbc_images)
 			print(" [*] Test finished!")
 
 			# experiment.set_model_graph(sess.graph)

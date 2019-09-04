@@ -4,7 +4,7 @@
 #SBATCH -C gpu
 #SBATCH -A dasrepo
 #SBATCH --gres=gpu:1
-#SBATCH -t 00:20:00 
+#SBATCH -t 04:00:00 
 
 module load esslurm
 module load cuda/10.0.130
@@ -18,10 +18,10 @@ module load tensorflow/gpu-1.13.1-py36
 
 
 
-python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/testing_rbc_generator.py \
-	--dataset rbc_3500 --input_channels 2 --start_res 8 --test_num 100\
+python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/style_mixing_rbc.py \
+	--dataset rbc_3500 --input_channels 2 --start_res 8 --test_num 400\
 	--img_size 256 --gpu_num 1 --progressive True \
 	--checkpoint_dir ../stored_outputs/one_seventh_divergence/checkpoint --result_dir ../stored_outputs/one_seventh_divergence/result \
 	--log_dir ../stored_outputs/one_seventh_divergence/log --sample_dir ../stored_outputs/one_seventh_divergence/sample  \
-	--name_experiment "generating images for one_seventh_divergence"
+	--name_experiment "style_mixing_rbc for one_seventh_divergence"
  
