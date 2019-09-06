@@ -2,16 +2,7 @@
 
 
 import sys,os,os.path,time
-# sys.path.append(os.path.expanduser('/global/u1/r/rgupta2/.local/lib/python3.7/site-packages/'))
 
-# !{sys.executable} -m pip install numpy
-# !{sys.executable} -m pip install pims
-# !{sys.executable} -m pip install --user netCDF4
-# !{sys.executable} -m pip install --user xarray
-# !{sys.executable} -m pip install --user tqdm
-# !{sys.executable} -m pip install --user kornia
-
-# export PYTHONPATH="${PYTHONPATH}:/usr/local/lib/python2.7/site-packages:/usr/lib/python2.7/site-packages"
 import numpy as np
 import time
 
@@ -52,7 +43,7 @@ save_dir_path = "/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/one_sevent
 
 number_of_timesteps = 3500
 st_time = 3500
-end_time = 23500
+end_time = 23630
 image_size = 256
 
 ux_data_whole_max = ds['u_x'][st_time : end_time].values.max()

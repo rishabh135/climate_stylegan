@@ -9,8 +9,9 @@ from comet_ml import Experiment
 
 import argparse
 from utils import *
-
-
+import xarray as xr
+from glob import glob
+import sys
 
 # Add the following code anywhere in your machine learning file
 # experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa",
@@ -426,12 +427,10 @@ class StyleGAN(object):
 
 
 
-	def draw_style_mixing_figure(self, saved_numpy_file_of_rbc_images):
+	def draw_style_mixing_figure(self, saved_numpy_file_of_rbc_images, real_images, dataset_location):
 		tf.global_variables_initializer().run()
 		self.saver = tf.train.Saver()
-
-
-		saved_numpy_file_of_rbc_images = 
+ 
 
 		result_dir = os.path.join(self.result_dir, 'style_mixing_figure/')
 		check_folder(result_dir)
@@ -458,6 +457,8 @@ class StyleGAN(object):
 
 
 		# generated_images = my_dict_back.item()["generated_images"][:11]
+
+
 		total_seeds = my_dict_back.item()["seeds"][:11]
 
 
@@ -531,6 +532,9 @@ class StyleGAN(object):
 
 			"""
 
+
+			# plot_tke(generated_data, , res, dataset_location)
+
 			ax = fig.add_subplot( len(dst_seeds)+1, len(src_seeds)+1,  idx)
 			idx += 1
 			ax.imshow(src_images[0,:,:,0])
@@ -544,10 +548,15 @@ class StyleGAN(object):
 			for col, src_image in enumerate(list(src_images)):
 				fig.add_subplot( len(dst_seeds)+1, len(src_seeds)+1,  idx)
 				idx += 1
-				plt.imshow(src_image[ :, : , 0])
+				
+				# generated_images = my_dict_back.item()["generated_images"][:11]
+				sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, dataset_location)
+				plt.hist(sp1D_real, bins='fd', histtype='step', log=True)
+				# plt.imshow(src_image[ :, : , 0])
+				
 				plt.title('src_image_{}'.format(col), fontsize='small')
-				plt.xticks([])
-				plt.yticks([])		
+				# plt.xticks([])
+				# plt.yticks([])		
 				# canvas.paste(PIL.Image.fromarray(np.uint8(src_image), 'RGB'), ((col + 1) * self.img_size, 0))
 
 			for row, dst_image in enumerate(list(dst_images)):
@@ -586,7 +595,7 @@ class StyleGAN(object):
 
 			plt.subplots_adjust( hspace=0, wspace=0)
 			fig.tight_layout()
-			plt.savefig( '{}/figure03-style-mixing_ux.jpg'.format(result_dir) , dpi = 400)
+			plt.savefig( '{}/figure03-style-mixing_with_radial_profile.jpg'.format(result_dir) , dpi = 400)
 
 
 
@@ -697,6 +706,77 @@ uy_average_over_time = my_dict_back.item()["{}_uy".format(image_size)]
 
 
 
+def tke2spectrum(tke, res, dash=None):
+	"""Convert TKE field to spectrum"""
+	sp = np.fft.fft2(tke.reshape(res,res))
+	sp = np.fft.fftshift(sp)
+	sp = np.real(sp*np.conjugate(sp))
+	sp1D = radialProfile.azimuthalAverage(sp)
+	return sp1D
+
+
+
+
+
+
+# my_dict_back = np.load(load_path, allow_pickle=True)
+
+
+
+# ux_average_over_time = my_dict_back.item()["{}_ux".format(image_size)]
+# uy_average_over_time = my_dict_back.item()["{}_uy".format(image_size)]
+
+# print(ux_data_for_tke.shape)
+# print(uy_data_for_tke.shape)
+
+# res_list = [8, 16, 32, 64, 128, 256]
+# tt = time.time()
+# Data = {}
+# for res in res_list:
+#     ux_reshape = ux_data_for_tke.reshape(-1, res, res)    
+#     uy_reshape = uy_data_for_tke.reshape(-1, res, res)
+	
+#     print(ux_reshape.shape)
+
+
+
+
+
+def plot_tke(generated_data, real_images, res, dataset_location):
+
+
+	ux_data = generated_data[ :, :, 0]
+	uy_data = generated_data[ :, :, 1]
+
+	ux_real = real_images[:, 0, :, :]
+	uy_real = real_images[:, 1, :, :]
+
+
+	# load_dir_path = "/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/one_seventh/rbc_3500/noramlized_by_max/"
+	load_path = os.path.join(dataset_location, "avg_velocities/average_velocity_at_{}.npy".format(res))
+
+
+	my_dict_back = np.load(load_path, allow_pickle=True)	
+
+
+	ux_average_over_time = my_dict_back.item()["ux"]
+	uy_average_over_time = my_dict_back.item()["uy"]
+	max_value = my_dict_back.item()["max_value"]
+
+
+
+	# ux_average_over_time = np.mean(ux_real, axis=0)
+	# uy_average_over_time = np.mean(uy_real, axis=0) 
+
+
+	tke_gen = ((ux_data[0] - ux_average_over_time)**2 + (uy_data[0] - uy_average_over_time)**2)
+	tke_real = ((ux_real[0] - ux_average_over_time)**2 + (uy_real[0] - uy_average_over_time)**2)
+
+	sp1D_gen = tke2spectrum(tke_gen, res)
+	sp1D_real = tke2spectrum(tke_real, res)
+
+	return sp1D_gen, sp1D_real
+	# plot with various axes scales
 
 
 """parsing and configuration"""
@@ -735,21 +815,16 @@ def parse_args():
 	parser.add_argument('--style_mixing_flag', type=bool, default= False,
 						help='should there be style mixing of two latents from g_mapping network , default is false')
 
-
-	parser.add_argument('--saved_numpy_file_of_rbc_images', type=str, default="single_generator_results/generator_122343_images_200.npy" , help="numpy file from which the latents are sourced")
-
-
-
+	"""
+	/global/cscratch1/sd/rgupta2/backup/StyleGAN/src/stored_outputs/one_seventh_divergence/result/single_generator_results
+	"""
 
 
+	parser.add_argument('--saved_numpy_file_of_rbc_images', type=str, default="single_generator_results/generator_386093_images_50_file_1.npy" , help="numpy file from which the latents are sourced")
 
+	parser.add_argument('--dataset_location', type=str, default="/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/one_seventh/rbc_3500/noramlized_by_max/", help='dataset_directory')
 
-	parser.add_argument('--dataset_location', type=str, default="/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/rbc_500/max/",
-						help='dataset_directory')
-
-
-	parser.add_argument('--name_experiment', type=str, default="",
-						help='dataset_directory')
+	parser.add_argument('--name_experiment', type=str, default="", help='dataset_directory')
 
 
 	return check_args(parser.parse_args())
@@ -758,6 +833,8 @@ def parse_args():
 def check_args(args):
 
 	# import comet_ml in the top of your file
+
+
 
 	experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa",
 								project_name="post_analyzing_{}".format(args.name_experiment, args.dataset), workspace="style-gan")
@@ -797,6 +874,25 @@ def main():
 
 	# open session
 	# Assume that you have 12GB of GPU memory and want to allocate ~4GB:
+
+
+	generated_data_location = sorted(glob("/global/cscratch1/sd/rgupta2/backup/StyleGAN/src/stored_outputs/one_seventh_divergence/result/single_generator_results/*.npy"))[-1]
+
+	real_data_location = sorted(glob("/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/one_seventh/rbc_3500/noramlized_by_max/*.npy"))[-1]
+
+
+	real_images = np.load(real_data_location)[:50]
+	generated_data = np.load(generated_data_location, allow_pickle=True).item()["generated_images"]
+
+	# print(real_images.shape) N C H W
+	# print(generated_data.shape)  N H W C
+	
+	# sys.exit(1)
+	# plot_tke(generated_data, real_images[:50], res, dataset_location)
+
+
+
+
 	gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9, allow_growth = True)
 	
 	with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
@@ -808,7 +904,7 @@ def main():
 
 			# show network architecture
 			show_all_variables()
-			gan.draw_style_mixing_figure(args.saved_numpy_file_of_rbc_images)
+			gan.draw_style_mixing_figure(args.saved_numpy_file_of_rbc_images, real_images, args.dataset_location)
 			print(" [*] Test finished!")
 
 			# experiment.set_model_graph(sess.graph)

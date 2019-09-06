@@ -516,8 +516,9 @@ class StyleGAN(object):
 				
 		# if not os.path.exists(result_dir):
 		# 	os.makedirs(result_dir)
-		save_file_path = str(result_dir) + "generator_{}_images_{}.npy".format(checkpoint_counter, self.test_num)
+		
 		trial = 0
+		save_file_path = str(result_dir) + "generator_{}_images_{}_file_{}.npy".format(checkpoint_counter, self.test_num, trial)
 		while(os.path.isfile(save_file_path)):
 			trial += 1
 			save_file_path = str(result_dir) + "generator_{}_images_{}_file_{}.npy".format(checkpoint_counter, self.test_num, trial )
