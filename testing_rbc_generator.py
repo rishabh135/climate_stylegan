@@ -411,7 +411,7 @@ class StyleGAN(object):
 			load_model_path = checkpoint_paths[-1]
 
 		else:
-			load_model_path =  os.path.join(checkpoint_dir,  self.model_name) + "/StyleGAN.model-{}".format(counter)
+			load_model_path =  os.path.join(checkpoint_dir, "StyleGAN.model-{}".format(counter))
 
 
 
@@ -421,7 +421,7 @@ class StyleGAN(object):
 		try:
 			self.saver.restore(self.sess, load_model_path)
 			print(" [*] Success to read {}".format(load_model_path))
-			counter = int(load_model_path.split('-')[-1])
+			# counter = int(load_model_path.split('-')[-1])
 			return True, counter
 
 		except:
@@ -524,7 +524,7 @@ class StyleGAN(object):
 			save_file_path = str(result_dir) + "generator_{}_images_{}_file_{}.npy".format(checkpoint_counter, self.test_num, trial )
 
 		np.save( save_file_path, Data)
-		print("Operation completed")
+		print("Operation completed with save file path = {} ".format(save_file_path))
 
 """
 
@@ -596,10 +596,16 @@ def parse_args():
 
 
 	parser.add_argument('--name_experiment', type=str, default="",
-						help='dataset_directory')
+						help='name of experiment')
 
 
-	parser.add_argument('--counter_number', type=int, default=0,
+
+	# counter_divergence = 462343 
+	# counter_without_divergence = 434218
+
+
+
+	parser.add_argument('--counter_number', type=int, default=434218,
 						help='number of the model to be loaded (0 makes it load the latest model)')
 
 
@@ -649,7 +655,7 @@ def main():
 
 	# open session
 	# Assume that you have 12GB of GPU memory and want to allocate ~4GB:
-	gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9, allow_growth = True)
+	gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9, allow_growth = False)
 	
 	with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
 		with experiment.train():

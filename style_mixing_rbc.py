@@ -430,7 +430,17 @@ class StyleGAN(object):
 	def draw_style_mixing_figure(self, saved_numpy_file_of_rbc_images, real_images, dataset_location):
 		tf.global_variables_initializer().run()
 		self.saver = tf.train.Saver()
+
+
+		"""
+		Flag to determine whether to plot spectral plots for every row or velocities
+
+		"""
+		plot_spectral = True
  
+
+
+
 
 		result_dir = os.path.join(self.result_dir, 'style_mixing_figure/')
 		check_folder(result_dir)
@@ -548,11 +558,11 @@ class StyleGAN(object):
 			for col, src_image in enumerate(list(src_images)):
 				fig.add_subplot( len(dst_seeds)+1, len(src_seeds)+1,  idx)
 				idx += 1
-				
-				# generated_images = my_dict_back.item()["generated_images"][:11]
-				sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, dataset_location)
-				# plt.hist(sp1D_real, bins='fd', histtype='step', log=True)
-				plt.hist(sp1D_real, bins='fd', histtype='step', log=True)
+				if(plot_spectral):
+					# generated_images = my_dict_back.item()["generated_images"][:11]
+					sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, dataset_location)
+					plt.plot(sp1D_gen, "-g")
+					plt.yscale("log")
 				# plt.imshow(src_image[ :, : , 0])
 				
 				plt.title('src_image_{}'.format(col), fontsize='small')
@@ -566,10 +576,20 @@ class StyleGAN(object):
 
 				fig.add_subplot( len(dst_seeds)+1, len(src_seeds)+1,  idx)
 				idx += 1
-				plt.imshow(dst_image[ :, : , 0])
-				plt.title('dst_image_{}'.format(row), fontsize='small')
-				plt.xticks([])
-				plt.yticks([])
+
+
+				if(plot_spectral):
+					# generated_images = my_dict_back.item()["generated_images"][:11]
+					sp1D_gen, sp1D_real = plot_tke(dst_image, real_images, self.img_size, dataset_location)
+					plt.plot(sp1D_gen, "-g")
+					plt.yscale("log")
+
+
+
+				# plt.imshow(dst_image[ :, : , 0])
+				# plt.title('dst_image_{}'.format(row), fontsize='small')
+				# plt.xticks([])
+				# plt.yticks([])
 
 				row_dlatents = np.stack([dst_dlatents[row]] * len(src_seeds))
 				print("src_dlatents : {} ".format(src_dlatents[:, :, 0]))
@@ -770,8 +790,8 @@ def plot_tke(generated_data, real_images, res, dataset_location):
 	# uy_average_over_time = np.mean(uy_real, axis=0) 
 
 
-	tke_gen = ((ux_data[0] - ux_average_over_time)**2 + (uy_data[0] - uy_average_over_time)**2)* max_value * max_value
-	tke_real = ((ux_real[0] - ux_average_over_time)**2 + (uy_real[0] - uy_average_over_time)**2)* max_value * max_value
+	tke_gen = ((ux_data[0] - ux_average_over_time)**2 + (uy_data[0] - uy_average_over_time)**2)
+	tke_real = ((ux_real[0] - ux_average_over_time)**2 + (uy_real[0] - uy_average_over_time)**2)
 
 	sp1D_gen = tke2spectrum(tke_gen, res)
 	sp1D_real = tke2spectrum(tke_real, res)
@@ -884,6 +904,7 @@ def main():
 
 	real_images = np.load(real_data_location)[:50]
 	generated_data = np.load(generated_data_location, allow_pickle=True).item()["generated_images"]
+
 
 	# print(real_images.shape) N C H W
 	# print(generated_data.shape)  N H W C
