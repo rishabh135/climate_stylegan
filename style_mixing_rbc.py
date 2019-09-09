@@ -551,6 +551,7 @@ class StyleGAN(object):
 				
 				# generated_images = my_dict_back.item()["generated_images"][:11]
 				sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, dataset_location)
+				# plt.hist(sp1D_real, bins='fd', histtype='step', log=True)
 				plt.hist(sp1D_real, bins='fd', histtype='step', log=True)
 				# plt.imshow(src_image[ :, : , 0])
 				
@@ -769,8 +770,8 @@ def plot_tke(generated_data, real_images, res, dataset_location):
 	# uy_average_over_time = np.mean(uy_real, axis=0) 
 
 
-	tke_gen = ((ux_data[0] - ux_average_over_time)**2 + (uy_data[0] - uy_average_over_time)**2)
-	tke_real = ((ux_real[0] - ux_average_over_time)**2 + (uy_real[0] - uy_average_over_time)**2)
+	tke_gen = ((ux_data[0] - ux_average_over_time)**2 + (uy_data[0] - uy_average_over_time)**2)* max_value * max_value
+	tke_real = ((ux_real[0] - ux_average_over_time)**2 + (uy_real[0] - uy_average_over_time)**2)* max_value * max_value
 
 	sp1D_gen = tke2spectrum(tke_gen, res)
 	sp1D_real = tke2spectrum(tke_real, res)
