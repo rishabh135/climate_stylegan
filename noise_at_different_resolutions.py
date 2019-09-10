@@ -500,7 +500,7 @@ class StyleGAN(object):
 		total_seeds = my_dict_back.item()["seeds"][:11]
 
 
-		src_seeds = total_seeds[:1]
+		src_seeds = total_seeds[:2]
 		# dst_seeds = total_seeds[5:]
 		# src_seeds = [604, 8440, 7613, 6978, 3004]
 		# dst_seeds = [1336, 6968, 607, 728, 7036, 9010]
@@ -586,12 +586,12 @@ class StyleGAN(object):
 
 
 			for col, src_image in enumerate(list(src_images)):
-				fig.add_subplot( len(src_seeds), len(noise_variations)+1,  idx)
+				fig.add_subplot(  len(noise_variations)+1, len(src_seeds),  idx)
 				idx += 1
 				if(plot_spectral):
 					# generated_images = my_dict_back.item()["generated_images"][:11]
 					sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
-					plt.plot(sp1D_gen, "-g")
+					plt.plot(sp1D_gen, "-r")
 					plt.yscale("log")
 				# plt.imshow(src_image[ :, : , 0])
 				
@@ -600,17 +600,21 @@ class StyleGAN(object):
 				# plt.yticks([])		
 				# canvas.paste(PIL.Image.fromarray(np.uint8(src_image), 'RGB'), ((col + 1) * self.img_size, 0))
 
+			list_print = ["no noise at any level", "noise only at finer levels 64 and above", "noise only at 8"]
 			for row, noise_v in enumerate(noise_variations):
 
 				row_images = self.sess.run(self.g_synthesis(src_dlatents_original, alpha, resolutions, featuremaps, noise_dict=noise_v))
 
 				for col, image in enumerate(list(row_images)):
-					fig.add_subplot( len(src_seeds), len(noise_variations)+1,  idx)
+					fig.add_subplot(  len(noise_variations)+1, len(src_seeds),  idx)
 					idx += 1
-					plt.imshow(image[ :, : , 0])
-					plt.title('row_image_{}'.format(col), fontsize='small')
-					plt.xticks([])
-					plt.yticks([])	
+					if(plot_spectral):
+						# generated_images = my_dict_back.item()["generated_images"][:11]
+						sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
+						plt.plot(sp1D_gen, "-g")
+						plt.yscale("log")
+						plt.title('{}'.format(list_print[col]), fontsize='small')
+					# plt.imshow(image[ :, : , 0])
 
 
 			plt.subplots_adjust( hspace=0, wspace=0)
