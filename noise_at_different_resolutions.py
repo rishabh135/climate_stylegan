@@ -415,29 +415,31 @@ class StyleGAN(object):
 		test_z = tf.random_normal(shape=[self.batch_size, self.z_dim])
 		alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
 		self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
-                
-        def load(self, checkpoint_dir, counter):
-            checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
-	    print(" [*] Reading checkpoints from  {} with counter {} ".format(checkpoint_dir, counter))
-	    if(counter == 0):
-                states = tf.train.get_checkpoint_state(checkpoint_dir)
-                checkpoint_paths = states.all_model_checkpoint_paths
-		load_model_path = checkpoint_paths[-1]
 
-	    else:
-		load_model_path =  os.path.join(checkpoint_dir, "StyleGAN.model-{}".format(counter))
+	def load(self, checkpoint_dir, counter):
+		
+		# checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
+		
+		print(" [*] Reading checkpoints from  {} with counter {} ".format(checkpoint_dir, counter))
+		if(counter == 0):
+				states = tf.train.get_checkpoint_state(checkpoint_dir)
+				checkpoint_paths = states.all_model_checkpoint_paths
+				load_model_path = checkpoint_paths[-1]
+
+		else:
+			load_model_path =  os.path.join(checkpoint_dir, "StyleGAN.model-{}".format(counter))
 
 
 
-	    try:
-		self.saver.restore(self.sess, load_model_path)
-		print(" [*] Success to read {}".format(load_model_path))
-		# counter = int(load_model_path.split('-')[-1])
-		return True, counter
-
-	    except:
-                print(" [*] Failed to find a checkpoint")
-		return False, -1
+		try:
+			self.saver.restore(self.sess, load_model_path)
+			print(" [*] Success to read {}".format(load_model_path))
+			# counter = int(load_model_path.split('-')[-1])
+			return True, counter
+		
+		except:
+			print(" [*] Failed to find a checkpoint")
+			return False, -1
 
 
 
@@ -588,7 +590,7 @@ class StyleGAN(object):
 				idx += 1
 				if(plot_spectral):
 					# generated_images = my_dict_back.item()["generated_images"][:11]
-					sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, dataset_location)
+					sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
 					plt.plot(sp1D_gen, "-g")
 					plt.yscale("log")
 				# plt.imshow(src_image[ :, : , 0])
