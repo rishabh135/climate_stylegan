@@ -586,7 +586,7 @@ class StyleGAN(object):
 
 
 			for col, src_image in enumerate(list(src_images)):
-				fig.add_subplot( len(src_seeds), len(noise_variations),  idx)
+				fig.add_subplot( len(src_seeds), len(noise_variations)+1,  idx)
 				idx += 1
 				if(plot_spectral):
 					# generated_images = my_dict_back.item()["generated_images"][:11]
@@ -605,7 +605,7 @@ class StyleGAN(object):
 				row_images = self.sess.run(self.g_synthesis(src_dlatents_original, alpha, resolutions, featuremaps, noise_dict=noise_v))
 
 				for col, image in enumerate(list(row_images)):
-					fig.add_subplot( len(src_seeds), len(noise_variations),  idx)
+					fig.add_subplot( len(src_seeds), len(noise_variations)+1,  idx)
 					idx += 1
 					plt.imshow(image[ :, : , 0])
 					plt.title('row_image_{}'.format(col), fontsize='small')
