@@ -529,7 +529,7 @@ class StyleGAN(object):
 
 		with tf.variable_scope('generator', reuse=tf.AUTO_REUSE) :
 
-			src_dlatents = self.g_mapping(src_latents, n_broadcast)
+			src_dlatents_original = self.g_mapping(src_latents, n_broadcast)
 			# dst_dlatents = self.g_mapping(dst_latents, n_broadcast)
 
 
@@ -541,8 +541,8 @@ class StyleGAN(object):
 			# src_dlatents = self.truncation_trick(n_broadcast, src_dlatents, dlatent_avg, self.truncation_psi)
 			# dst_dlatents = self.truncation_trick(n_broadcast, dst_dlatents, dlatent_avg, self.truncation_psi)
 
-			src_images = self.sess.run(self.g_synthesis(src_dlatents, alpha, resolutions, featuremaps, noise_dict = noise_variations[0]))
-			column_images = self.sess.run(self.g_synthesis(src_dlatents, alpha, resolutions, featuremaps))
+			src_images = self.sess.run(self.g_synthesis(src_dlatents_original, alpha, resolutions, featuremaps, noise_dict = noise_variations[0]))
+			# column_images = self.sess.run(self.g_synthesis(src_dlatents, alpha, resolutions, featuremaps))
 			# dst_images = self.sess.run(self.g_synthesis(dst_dlatents, alpha, resolutions, featuremaps))
 
 			# for i in range(len(src_images)):
@@ -551,7 +551,7 @@ class StyleGAN(object):
 			# for i in range(len(dst_images)):
 			# 	dst_images[i] = post_process_generator_output(dst_images[i])
 
-			src_dlatents = self.sess.run(src_dlatents)
+			src_dlatents = self.sess.run(src_dlatents_original)
 			# dst_dlatents = self.sess.run(dst_dlatents)
 
 			# canvas = PIL.Image.new('RGB', (self.img_size * (len(src_seeds) + 1), self.img_size * (len(dst_seeds) + 1)), 'white')
@@ -602,7 +602,7 @@ class StyleGAN(object):
 
 			for row, noise_v in enumerate(noise_variations):
 
-				row_images = self.sess.run(self.g_synthesis(src_dlatents, alpha, resolutions, featuremaps, noise_dict=noise_v))
+				row_images = self.sess.run(self.g_synthesis(src_dlatents_original, alpha, resolutions, featuremaps, noise_dict=noise_v))
 
 				for col, image in enumerate(list(row_images)):
 					fig.add_subplot( len(src_seeds), len(noise_variations),  idx)
@@ -698,7 +698,7 @@ def plot_tke(generated_data, real_images, res, dataset_location):
 
 
 	# load_dir_path = "/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/one_seventh/rbc_3500/noramlized_by_max/"
-	load_path = os.path.join(dataset_location, "/tke_average_energies_{}.npy".format(res))
+	load_path =  "/data0/rgupta2/dataset/rbc_500/max_normalized/tke_average_energies_{}.npy".format(res)
 
 
 	my_dict_back = np.load(load_path, allow_pickle=True)	
