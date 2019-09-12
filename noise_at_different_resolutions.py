@@ -28,20 +28,20 @@ import numpy as np
 import PIL.Image
 
 
-import seaborn as sns; sns.set(color_codes=True)
+# import seaborn as sns; sns.set(color_codes=True)
 import pandas as pd
-import seaborn.timeseries
+# import seaborn.timeseries
 
 
 
-def tsplot(ax, data,**kw):
-	x = np.arange(data.shape[1])
-	est = np.mean(data, axis=0)
-	sd = np.std(data, axis=0)
-	cis = (est - sd, est + sd)
-	ax = sns.lineplot(x,est,**kw)
-	ax.fill_between(x,cis[0],cis[1], alpha=0.3, **kw)
-	ax.margins(x=0)
+# def tsplot(data,**kw):
+# 	x = np.arange(data.shape[1])
+# 	est = np.mean(data, axis=0)
+# 	sd = np.std(data, axis=0)
+# 	cis = (est - sd, est + sd)
+# 	plt.plot(x,est,**kw)
+# 	# plt.fill_between(x,cis[0],cis[1], alpha=0.3, **kw)
+# 	plt.margins(x=0)
 
 
 class StyleGAN(object):
@@ -579,9 +579,9 @@ class StyleGAN(object):
 			print("\n\n\n")
 			
 
-
-			fig = plt.figure(figsize=(8, 20))				
-			idx = 1
+				
+			fig, axs = plt.subplots( len(noise_variations)+1, len(src_seeds), figsize=(8,20))
+			idx = 0
 
 
 			"""
@@ -604,12 +604,11 @@ class StyleGAN(object):
 
 
 			for col, src_image in enumerate(list(src_images)):
-				fig.add_subplot(  len(noise_variations)+1, len(src_seeds),  idx)
-				idx += 1
+				# fig.add_subplot(  len(noise_variations)+1, len(src_seeds),  idx)
 				if(plot_spectral):
 					# generated_images = my_dict_back.item()["generated_images"][:11]
 					sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
-					sns.lineplot(data=sp1D_gen, ci=None)
+					axs[idx, col].plot(sp1D_gen/sp1D_real, '-r')
 					plt.yscale("log")
 				# plt.imshow(src_image[ :, : , 0])
 				
@@ -630,18 +629,29 @@ class StyleGAN(object):
 						collection_of_radial_profiles[idx].append(sp1D_gen)
 
 				row_images = []
+
 				for i in range(2):
 					row_images.append(np.vstack(collection_of_radial_profiles[i]))
-				print("\n\n#############")
-				print("#############\n\n\n")
-
+					# print("\n\n*********row_image shape {} ".format(row_images[i].shape))
+				
+				idx += 1
 				for col, image in enumerate(row_images):
-					print("*******\n\n row image is of shape {}\n".format(image.shape))
-					ax = fig.add_subplot(  len(noise_variations)+1, len(src_seeds),  idx)
-					idx += 1
+					# print("*******\n\n row image is of shape {}\n".format(image.shape))
+					# fig.add_subplot(  len(noise_variations)+1, len(src_seeds),  idx)
+					
 					if(plot_spectral):
+						
+						# x = np.arange(image.shape[1])
+						# est = np.mean(image, axis=0)
+						# sd = np.std(image, axis=0)
+						# cis = (est - sd, est + sd)
+						# print("inside plot spectral with xshape {} est shape {} and  *****".format(x.shape, est.shape))
+						axs[idx, col].plot(image[0], '.g', linewidth=0.5)
+						# plt.fill_between(x,cis[0],cis[1], alpha=0.7)
+						# plt.margins(x=0)
+
 						# generated_images = my_dict_back.item()["generated_images"][:11]
-						tsplot(ax, image)
+						# tsplot(image)
 						#tsplot(ax2, image)
 						# plt.show(sns)
 						# plt.plot(sp1D_gen, "-g")
