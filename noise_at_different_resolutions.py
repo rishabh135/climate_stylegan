@@ -571,14 +571,14 @@ class StyleGAN(object):
 			# 	if(item.name.find("Noise/weight:0")):
 			# 		print(item)
 		
-			res_list = [8, 16, 32, 64, 128, 256]
-			for res in res_list:
-				tmp = self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/{}x{}/Conv0_up/Noise/weight:0".format(res, res)))
-				print(" conv0up  res{}  mean {} , std {} , min {},  max {}  ".format(res, tmp.mean(), tmp.std(), tmp.min(), tmp.max()))
+			# res_list = [8, 16, 32, 64, 128, 256]
+			# for res in res_list:
+			# 	tmp = self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/{}x{}/Conv0_up/Noise/weight:0".format(res, res)))
+			# 	print(" conv0up  res{}  mean {} , std {} , min {},  max {}  ".format(res, tmp.mean(), tmp.std(), tmp.min(), tmp.max()))
 
 
-				tmp = self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/{}x{}/Conv1/Noise/weight:0".format(res, res)))
-				print(" conv1  res{}  mean {} , std {} , min {},  max {}  ".format(res, tmp.mean(), tmp.std(), tmp.min(), tmp.max()))
+			# 	tmp = self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/{}x{}/Conv1/Noise/weight:0".format(res, res)))
+			# 	print(" conv1  res{}  mean {} , std {} , min {},  max {}  ".format(res, tmp.mean(), tmp.std(), tmp.min(), tmp.max()))
 
 
 		
@@ -636,7 +636,9 @@ class StyleGAN(object):
 					# generated_images = my_dict_back.item()["generated_images"][:11]
 					sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
 					axs[idx, col].plot(sp1D_gen, '-r', label='generated_image')
+					axs[idx, col].set_xscale("log")
 					axs[idx, col].set_yscale("log")
+
 				# plt.imshow(src_image[ :, : , 0])
 				
 				axs[idx, col].set_title('original_image_{}'.format(col), fontsize='large')
@@ -648,7 +650,8 @@ class StyleGAN(object):
 			for row, noise_v in tqdm(enumerate(noise_variations[1:])):
 				
 				collection_of_radial_profiles = [[] for i in range(len(src_seeds))]
-				for i in range(noise_times):
+
+				for i in trange(noise_times):
 					tmp_images = self.sess.run(self.g_synthesis(src_dlatents_original, alpha, resolutions, featuremaps, noise_dict=noise_v))
 					for idx, img in enumerate(list(tmp_images)):
 						sp1D_gen, sp1D_real = plot_tke(img, real_images, self.img_size, real_data_location)
@@ -678,7 +681,9 @@ class StyleGAN(object):
 						axs[row+1, col].fill_between(x,cis[0],cis[1], color='C0', alpha=0.8)
 						axs[row+1, col].plot(est,'-g', linewidth=0.5, label="{}".format(list_print[row+1]))
 						axs[row+1, col].margins(x=0)
+						axs[row+1, col].set_xscale("log")
 						axs[row+1, col].set_yscale("log")
+						
 						# plt.fill_between(x,cis[0],cis[1], alpha=0.7)
 						# plt.margins(x=0)
 
@@ -776,20 +781,33 @@ def plot_tke(generated_data, real_images, res, dataset_location):
 
 
 	# load_dir_path = "/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/one_seventh/rbc_3500/noramlized_by_max/"
+
+
+	
 	load_path =  "/data0/rgupta2/dataset/rbc_500/max_normalized/tke_average_energies_{}.npy".format(res)
-
-
 	my_dict_back = np.load(load_path, allow_pickle=True)	
-
-
-	ux_average_over_time = my_dict_back.item()["256_ux"]
-	uy_average_over_time = my_dict_back.item()["256_uy"]
+	real_ux_average_over_time = my_dict_back.item()["256_ux"]
+	real_uy_average_over_time = my_dict_back.item()["256_uy"]
 	# max_value = my_dict_back.item()["max_value"]
  
 
 
-	tke_gen = ((ux_data[0] - ux_average_over_time)**2 + (uy_data[0] - uy_average_over_time)**2)
-	tke_real = ((ux_real[0] - ux_average_over_time)**2 + (uy_real[0] - uy_average_over_time)**2)
+
+
+	load_path =  "/data0/rgupta2/wo_style_rbc_model_weights/results/average_velocity/generator_354218_average_velocities.npy".format(res)
+	my_dict_back = np.load(load_path, allow_pickle=True)	
+
+
+	fake_ux_average_over_time = my_dict_back.item()["256_ux"]
+	fake_uy_average_over_time = my_dict_back.item()["256_uy"]
+	# max_value = my_dict_back.item()["max_value"]
+ 
+
+
+
+
+	tke_gen = ((ux_data[0] - fake_ux_average_over_time)**2 + (uy_data[0] - fake_uy_average_over_time)**2)
+	tke_real = ((ux_real[0] - real_ux_average_over_time)**2 + (uy_real[0] - real_uy_average_over_time)**2)
 
 	sp1D_gen = tke2spectrum(tke_gen, res)
 	sp1D_real = tke2spectrum(tke_real, res)
