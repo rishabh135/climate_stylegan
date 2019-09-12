@@ -518,7 +518,10 @@ class StyleGAN(object):
 
 
 		src_seeds = total_seeds[:2]
+<<<<<<< HEAD
 		# src_seeds = [ x for x in src_seeds for i in range(noise_times) ] 
+=======
+>>>>>>> 0022ddedf1ab7f5566888d5e2e03b94e5831a055
 		# dst_seeds = total_seeds[5:]
 		# src_seeds = [604, 8440, 7613, 6978, 3004]
 		# dst_seeds = [1336, 6968, 607, 728, 7036, 9010]
@@ -609,7 +612,11 @@ class StyleGAN(object):
 				if(plot_spectral):
 					# generated_images = my_dict_back.item()["generated_images"][:11]
 					sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
+<<<<<<< HEAD
 					sns.lineplot(data=sp1D_gen, ci=None)
+=======
+					plt.plot(sp1D_gen, "-r")
+>>>>>>> 0022ddedf1ab7f5566888d5e2e03b94e5831a055
 					plt.yscale("log")
 				# plt.imshow(src_image[ :, : , 0])
 				
@@ -619,6 +626,7 @@ class StyleGAN(object):
 				# canvas.paste(PIL.Image.fromarray(np.uint8(src_image), 'RGB'), ((col + 1) * self.img_size, 0))
 
 			list_print = ["no noise at any level", "noise only at finer levels 64 and above", "noise only at 8"]
+<<<<<<< HEAD
 
 			for row, noise_v in tqdm(enumerate(noise_variations)):
 				
@@ -647,6 +655,21 @@ class StyleGAN(object):
 						# plt.plot(sp1D_gen, "-g")
 						plt.yscale("log")
 						plt.title('{}'.format(list_print[row]), fontsize='large')
+=======
+			for row, noise_v in enumerate(noise_variations):
+
+				row_images = self.sess.run(self.g_synthesis(src_dlatents_original, alpha, resolutions, featuremaps, noise_dict=noise_v))
+
+				for col, image in enumerate(list(row_images)):
+					fig.add_subplot(  len(noise_variations)+1, len(src_seeds),  idx)
+					idx += 1
+					if(plot_spectral):
+						# generated_images = my_dict_back.item()["generated_images"][:11]
+						sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
+						plt.plot(sp1D_gen, "-g")
+						plt.yscale("log")
+						plt.title('{}'.format(list_print[col]), fontsize='small')
+>>>>>>> 0022ddedf1ab7f5566888d5e2e03b94e5831a055
 					# plt.imshow(image[ :, : , 0])
 
 
