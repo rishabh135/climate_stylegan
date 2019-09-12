@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
+import matplotlib.style
 import matplotlib as mpl
 mpl.use('Agg')
+mpl.style.use('seaborn')
 import matplotlib.pyplot as plt
 	
 from comet_ml import Experiment
@@ -34,14 +36,14 @@ import pandas as pd
 
 
 
-# def tsplot(data,**kw):
-# 	x = np.arange(data.shape[1])
-# 	est = np.mean(data, axis=0)
-# 	sd = np.std(data, axis=0)
-# 	cis = (est - sd, est + sd)
-# 	plt.plot(x,est,**kw)
-# 	# plt.fill_between(x,cis[0],cis[1], alpha=0.3, **kw)
-# 	plt.margins(x=0)
+# def tsplot(ax, data,**kw):
+#     x = np.arange(data.shape[1])
+#     est = np.mean(data, axis=0)
+#     sd = np.std(data, axis=0)
+#     cis = (est - sd, est + sd)
+#     ax.fill_between(x,cis[0],cis[1], alpha=0.4, **kw)
+#     sns.lineplot(x=x, y=est,**kw)
+#     ax.margins(x=0)
 
 
 class StyleGAN(object):
@@ -474,7 +476,7 @@ class StyleGAN(object):
 
 		"""
 		plot_spectral = True
-		noise_times = 5		
+		noise_times = 20		
 
 
 		noise_variations = [ {4: False, 8: False, 16: False, 32: False, 64: False, 128: False, 256: False, 512: True, 1024: True},  {4: False, 8: False, 16: False, 32: False, 64: True, 128: True, 256: True, 512: True, 1024: True}, {4: True, 8: True, 16: False, 32: False, 64: False, 128: False, 256: False, 512: True, 1024: True}
@@ -514,10 +516,10 @@ class StyleGAN(object):
 		# generated_images = my_dict_back.item()["generated_images"][:11]
 
 
-		total_seeds = my_dict_back.item()["seeds"][:11]
+		total_seeds = my_dict_back.item()["seeds"][30:35]
 
 
-		src_seeds = total_seeds[:2]
+		src_seeds = total_seeds[:3]
 		# src_seeds = [ x for x in src_seeds for i in range(noise_times) ] 
 		# dst_seeds = total_seeds[5:]
 		# src_seeds = [604, 8440, 7613, 6978, 3004]
@@ -560,6 +562,14 @@ class StyleGAN(object):
 			# dst_dlatents = self.truncation_trick(n_broadcast, dst_dlatents, dlatent_avg, self.truncation_psi)
 
 			src_images = self.sess.run(self.g_synthesis(src_dlatents_original, alpha, resolutions, featuremaps, noise_dict = noise_variations[0]))
+
+			saved_noises = self.sess.run(tf.get_collection("Noise/weight:0"))
+			for noi in saved_noises:
+				print(" noise shape : {}".format(noi.shape)) 
+			#Tensor("example:0", shape=(2, 2), dtype=float32)
+				
+
+			# = self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/8x8/Conv0_up/Noise/weight:0").shape)))
 			# column_images = self.sess.run(self.g_synthesis(src_dlatents, alpha, resolutions, featuremaps))
 			# dst_images = self.sess.run(self.g_synthesis(dst_dlatents, alpha, resolutions, featuremaps))
 
@@ -608,11 +618,11 @@ class StyleGAN(object):
 				if(plot_spectral):
 					# generated_images = my_dict_back.item()["generated_images"][:11]
 					sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
-					axs[idx, col].plot(sp1D_gen/sp1D_real, '-r')
-					plt.yscale("log")
+					axs[idx, col].plot(sp1D_gen, '-r')
+					axs[idx, col].set_yscale("log")
 				# plt.imshow(src_image[ :, : , 0])
 				
-				plt.title('original_image_{}'.format(col), fontsize='large')
+				axs[idx, col].set_title('original_image_{}'.format(col), fontsize='large')
 				# plt.xticks([])
 				# plt.yticks([])		
 				# canvas.paste(PIL.Image.fromarray(np.uint8(src_image), 'RGB'), ((col + 1) * self.img_size, 0))
@@ -621,16 +631,15 @@ class StyleGAN(object):
 
 			for row, noise_v in tqdm(enumerate(noise_variations)):
 				
-				collection_of_radial_profiles = [[] for i in range(2)]
+				collection_of_radial_profiles = [[] for i in range(len(src_seeds))]
 				for i in range(noise_times):
 					tmp_images = self.sess.run(self.g_synthesis(src_dlatents_original, alpha, resolutions, featuremaps, noise_dict=noise_v))
 					for idx, img in enumerate(list(tmp_images)):
 						sp1D_gen, sp1D_real = plot_tke(img, real_images, self.img_size, real_data_location)
 						collection_of_radial_profiles[idx].append(sp1D_gen)
-
 				row_images = []
 
-				for i in range(2):
+				for i in range(len(src_seeds)):
 					row_images.append(np.vstack(collection_of_radial_profiles[i]))
 					# print("\n\n*********row_image shape {} ".format(row_images[i].shape))
 				
@@ -645,8 +654,15 @@ class StyleGAN(object):
 						# est = np.mean(image, axis=0)
 						# sd = np.std(image, axis=0)
 						# cis = (est - sd, est + sd)
-						# print("inside plot spectral with xshape {} est shape {} and  *****".format(x.shape, est.shape))
-						axs[idx, col].plot(image[0], '.g', linewidth=0.5)
+						# print("inside plot spectral with xshape {} est shape {} and  *****".format(x.shape, est.shape))	
+						x = np.arange(image.shape[1])
+						est = np.mean(image, axis=0)
+						sd = np.std(image, axis=0)
+						cis = (est - 2*sd, est + 2*sd)
+						axs[row+1, col].fill_between(x,cis[0],cis[1], color='C0', alpha=0.8)
+						axs[row+1, col].plot(est,'-g', linewidth=0.5)
+						axs[row+1, col].margins(x=0)
+						axs[row+1, col].set_yscale("log")
 						# plt.fill_between(x,cis[0],cis[1], alpha=0.7)
 						# plt.margins(x=0)
 
@@ -655,14 +671,13 @@ class StyleGAN(object):
 						#tsplot(ax2, image)
 						# plt.show(sns)
 						# plt.plot(sp1D_gen, "-g")
-						plt.yscale("log")
-						plt.title('{}'.format(list_print[row]), fontsize='large')
+						axs[row+1, col].set_title('{}'.format(list_print[row]), fontsize='large')
 					# plt.imshow(image[ :, : , 0])
 
 
 			plt.subplots_adjust( hspace=0, wspace=0)
 			fig.tight_layout()
-			plt.savefig( '{}/noise_variations_profile.jpg'.format(result_dir) , dpi = 400)
+			plt.savefig( '{}/noise_variations_profile_with_tsplot.jpg'.format(result_dir) , dpi = 400)
 
 
 
@@ -877,7 +892,7 @@ def main():
 
 
 
-	gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9, allow_growth = True)
+	gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8, allow_growth = False)
 	
 	with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
 		with experiment.train():
