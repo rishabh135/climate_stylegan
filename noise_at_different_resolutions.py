@@ -18,6 +18,7 @@ import sys
 # 						project_name="on-celeba", workspace="style-gan")
 
 import time, re, sys
+from tqdm import tqdm, trange
 from ops import *
 from utils import *
 import tensorflow
@@ -25,7 +26,23 @@ print(tensorflow.__version__)
 from tensorflow.contrib.data import prefetch_to_device, shuffle_and_repeat, map_and_batch
 import numpy as np
 import PIL.Image
-from tqdm import tqdm
+
+
+import seaborn as sns; sns.set(color_codes=True)
+import pandas as pd
+import seaborn.timeseries
+
+
+
+def tsplot(ax, data,**kw):
+	x = np.arange(data.shape[1])
+	est = np.mean(data, axis=0)
+	sd = np.std(data, axis=0)
+	cis = (est - sd, est + sd)
+	ax = sns.lineplot(x,est,**kw)
+	ax.fill_between(x,cis[0],cis[1], alpha=0.3, **kw)
+	ax.margins(x=0)
+
 
 class StyleGAN(object):
 
@@ -457,7 +474,7 @@ class StyleGAN(object):
 
 		"""
 		plot_spectral = True
- 
+		noise_times = 5		
 
 
 		noise_variations = [ {4: False, 8: False, 16: False, 32: False, 64: False, 128: False, 256: False, 512: True, 1024: True},  {4: False, 8: False, 16: False, 32: False, 64: True, 128: True, 256: True, 512: True, 1024: True}, {4: True, 8: True, 16: False, 32: False, 64: False, 128: False, 256: False, 512: True, 1024: True}
@@ -500,7 +517,8 @@ class StyleGAN(object):
 		total_seeds = my_dict_back.item()["seeds"][:11]
 
 
-		src_seeds = total_seeds[:1]
+		src_seeds = total_seeds[:2]
+		# src_seeds = [ x for x in src_seeds for i in range(noise_times) ] 
 		# dst_seeds = total_seeds[5:]
 		# src_seeds = [604, 8440, 7613, 6978, 3004]
 		# dst_seeds = [1336, 6968, 607, 728, 7036, 9010]
@@ -586,31 +604,50 @@ class StyleGAN(object):
 
 
 			for col, src_image in enumerate(list(src_images)):
-				fig.add_subplot( len(src_seeds), len(noise_variations)+1,  idx)
+				fig.add_subplot(  len(noise_variations)+1, len(src_seeds),  idx)
 				idx += 1
 				if(plot_spectral):
 					# generated_images = my_dict_back.item()["generated_images"][:11]
 					sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
-					plt.plot(sp1D_gen, "-g")
+					sns.lineplot(data=sp1D_gen, ci=None)
 					plt.yscale("log")
 				# plt.imshow(src_image[ :, : , 0])
 				
-				plt.title('original_image_{}'.format(col), fontsize='small')
+				plt.title('original_image_{}'.format(col), fontsize='large')
 				# plt.xticks([])
 				# plt.yticks([])		
 				# canvas.paste(PIL.Image.fromarray(np.uint8(src_image), 'RGB'), ((col + 1) * self.img_size, 0))
 
-			for row, noise_v in enumerate(noise_variations):
+			list_print = ["no noise at any level", "noise only at finer levels 64 and above", "noise only at 8"]
 
-				row_images = self.sess.run(self.g_synthesis(src_dlatents_original, alpha, resolutions, featuremaps, noise_dict=noise_v))
+			for row, noise_v in tqdm(enumerate(noise_variations)):
+				
+				collection_of_radial_profiles = [[] for i in range(2)]
+				for i in range(noise_times):
+					tmp_images = self.sess.run(self.g_synthesis(src_dlatents_original, alpha, resolutions, featuremaps, noise_dict=noise_v))
+					for idx, img in enumerate(list(tmp_images)):
+						sp1D_gen, sp1D_real = plot_tke(img, real_images, self.img_size, real_data_location)
+						collection_of_radial_profiles[idx].append(sp1D_gen)
 
-				for col, image in enumerate(list(row_images)):
-					fig.add_subplot( len(src_seeds), len(noise_variations)+1,  idx)
+				row_images = []
+				for i in range(2):
+					row_images.append(np.vstack(collection_of_radial_profiles[i]))
+				print("\n\n#############")
+				print("#############\n\n\n")
+
+				for col, image in enumerate(row_images):
+					print("*******\n\n row image is of shape {}\n".format(image.shape))
+					ax = fig.add_subplot(  len(noise_variations)+1, len(src_seeds),  idx)
 					idx += 1
-					plt.imshow(image[ :, : , 0])
-					plt.title('row_image_{}'.format(col), fontsize='small')
-					plt.xticks([])
-					plt.yticks([])	
+					if(plot_spectral):
+						# generated_images = my_dict_back.item()["generated_images"][:11]
+						tsplot(ax, image)
+						#tsplot(ax2, image)
+						# plt.show(sns)
+						# plt.plot(sp1D_gen, "-g")
+						plt.yscale("log")
+						plt.title('{}'.format(list_print[row]), fontsize='large')
+					# plt.imshow(image[ :, : , 0])
 
 
 			plt.subplots_adjust( hspace=0, wspace=0)
@@ -855,5 +892,6 @@ if __name__ == '__main__':
 
 
  
+
 
 
