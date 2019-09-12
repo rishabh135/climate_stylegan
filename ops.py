@@ -409,7 +409,7 @@ def apply_noise(x, res, noise_dict={4: False, 8: True, 16: True, 32: True, 64: T
 		noise = tf.random_normal([tf.shape(x)[0], x.shape[1], x.shape[2], 1])
 		weight = tf.get_variable('weight', shape=[x.get_shape().as_list()[-1]], initializer=tf.initializers.zeros())
 		weight = tf.reshape(weight, [1, 1, 1, -1])
-		if(noise_dict[res]):
+		if(not noise_dict[res]):
 			weight = weight * tf.zeros(shape=weight.get_shape().as_list(), dtype=tf.dtypes.float32)
 		x = x + noise * weight
 

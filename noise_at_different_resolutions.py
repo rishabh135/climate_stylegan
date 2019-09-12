@@ -476,12 +476,16 @@ class StyleGAN(object):
 
 		"""
 		plot_spectral = True
-		noise_times = 20		
+		noise_times = 100		
 
 
-		noise_variations = [ {4: False, 8: False, 16: False, 32: False, 64: False, 128: False, 256: False, 512: True, 1024: True},  {4: False, 8: False, 16: False, 32: False, 64: True, 128: True, 256: True, 512: True, 1024: True}, {4: True, 8: True, 16: False, 32: False, 64: False, 128: False, 256: False, 512: True, 1024: True}
+		noise_variations = [ {4: False, 8: False, 16: False, 32: False, 64: False, 128: False, 256: False, 512: True, 1024: True},  {4: False, 8: False, 16: False, 32: False, 64: True, 128: True, 256: True, 512: True, 1024: True}
 		]
 
+
+
+		list_print = ["no noise at any level", "noise only at finer levels 64 and above"]
+		# "noise only at 8"]
 
 
 		result_dir = os.path.join(self.result_dir, 'noise_mixing_figure/')
@@ -516,7 +520,7 @@ class StyleGAN(object):
 		# generated_images = my_dict_back.item()["generated_images"][:11]
 
 
-		total_seeds = my_dict_back.item()["seeds"][30:35]
+		total_seeds = my_dict_back.item()["seeds"][40:45]
 
 
 		src_seeds = total_seeds[:3]
@@ -563,9 +567,34 @@ class StyleGAN(object):
 
 			src_images = self.sess.run(self.g_synthesis(src_dlatents_original, alpha, resolutions, featuremaps, noise_dict = noise_variations[0]))
 
-			saved_noises = self.sess.run(tf.get_collection("Noise/weight:0"))
-			for noi in saved_noises:
-				print(" noise shape : {}".format(noi.shape)) 
+			# for item in  tf.get_collection(key=tf.GraphKeys.TRAINABLE_VARIABLES, scope="generator/g_synthesis"):
+			# 	if(item.name.find("Noise/weight:0")):
+			# 		print(item)
+		
+
+			print("mean of values at 16x16 {} ".format(self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/16x16/Conv0_up/Noise/weight:0")).mean()))
+
+			print("mean of values at conv1 16x16 {} ".format(self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/16x16/Conv1/Noise/weight:0")).mean()))
+
+			print("mean of values at 32x32 {} ".format(self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/32x32/Conv0_up/Noise/weight:0")).mean()))
+
+			print("mean of values at conv1 32x32 {} ".format(self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/32x32/Conv1/Noise/weight:0")).mean()))
+
+			print("mean of values at 64x64 {} ".format(self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/64x64/Conv0_up/Noise/weight:0")).mean()))
+
+			print("mean of values at conv1 64x64 {} ".format(self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/64x64/Conv1/Noise/weight:0")).mean()))
+
+			print("mean of values at 128x128 {} ".format(self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/128x128/Conv0_up/Noise/weight:0")).mean()))
+
+
+			print("mean of values at conv1 128x128 {} ".format(self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/128x128/Conv1/Noise/weight:0")).mean()))
+
+
+			print("mean of values at 256x256 {} ".format(self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/256x256/Conv0_up/Noise/weight:0")).mean()))
+
+
+			print("mean of values at conv1 256x256 {} ".format(self.sess.run(tf.get_default_graph().get_tensor_by_name("generator/g_synthesis/256x256/Conv1/Noise/weight:0")).mean()))
+
 			#Tensor("example:0", shape=(2, 2), dtype=float32)
 				
 
@@ -618,7 +647,7 @@ class StyleGAN(object):
 				if(plot_spectral):
 					# generated_images = my_dict_back.item()["generated_images"][:11]
 					sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
-					axs[idx, col].plot(sp1D_gen, '-r')
+					axs[idx, col].plot(sp1D_gen, '-r', label='generated_image')
 					axs[idx, col].set_yscale("log")
 				# plt.imshow(src_image[ :, : , 0])
 				
@@ -627,7 +656,6 @@ class StyleGAN(object):
 				# plt.yticks([])		
 				# canvas.paste(PIL.Image.fromarray(np.uint8(src_image), 'RGB'), ((col + 1) * self.img_size, 0))
 
-			list_print = ["no noise at any level", "noise only at finer levels 64 and above", "noise only at 8"]
 
 			for row, noise_v in tqdm(enumerate(noise_variations)):
 				
@@ -660,7 +688,7 @@ class StyleGAN(object):
 						sd = np.std(image, axis=0)
 						cis = (est - 2*sd, est + 2*sd)
 						axs[row+1, col].fill_between(x,cis[0],cis[1], color='C0', alpha=0.8)
-						axs[row+1, col].plot(est,'-g', linewidth=0.5)
+						axs[row+1, col].plot(est,'-g', linewidth=0.5, label="{}".format(list_print[row]))
 						axs[row+1, col].margins(x=0)
 						axs[row+1, col].set_yscale("log")
 						# plt.fill_between(x,cis[0],cis[1], alpha=0.7)
@@ -671,7 +699,7 @@ class StyleGAN(object):
 						#tsplot(ax2, image)
 						# plt.show(sns)
 						# plt.plot(sp1D_gen, "-g")
-						axs[row+1, col].set_title('{}'.format(list_print[row]), fontsize='large')
+						axs[row+1, col].set_title('{}'. fontsize='large')
 					# plt.imshow(image[ :, : , 0])
 
 
