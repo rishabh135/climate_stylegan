@@ -21,7 +21,7 @@ import sys
 
 import time, re, sys
 from tqdm import tqdm, trange
-from ops import *
+from ops_with_dict import *
 from utils import *
 import tensorflow
 print(tensorflow.__version__)
@@ -466,7 +466,7 @@ class StyleGAN(object):
 
 
 
-	def draw_style_mixing_figure(self, generated_data_location, real_data_location):
+	def draw_style_mixing_figure(self, generated_data_location, real_data_location, counter_number):
 		tf.global_variables_initializer().run()
 		self.saver = tf.train.Saver()
 
@@ -479,12 +479,29 @@ class StyleGAN(object):
 		noise_times = 25	
 
 
-		noise_variations = [  {4: True, 8: True, 16: True, 32: True, 64: True, 128: True, 256: True, 512: True, 1024: True}, {4: False, 8: False, 16: False, 32: False, 64: False, 128: False, 256: False, 512: False, 1024: False},  {4: False, 8: False, 16: False, 32: False, 64: True, 128: True, 256: True, 512: True, 1024: True}, {4: False, 8: True, 16: False, 32: False, 64: True, 128: True, 256: True, 512: True, 1024: True}, 
+		# noise_variations = [ "usual stylegan (noise at all levels)", "no noise", "noise at only finer 64 and higher", "noise only at coarse 4 and 8 levels"]
+		noise_variations = [  
+
+		{4: True, 8: True, 16: True, 32: True, 64: True, 128: True, 256: True, 512: True, 1024: True}, 
+		
+		{4: False, 8: False, 16: False, 32: False, 64: False, 128: False, 256: False, 512: False, 1024: False},  
+		
+		{4: False, 8: False, 16: False, 32: False, 64: True, 128: True, 256: True, 512: True, 1024: True}, 
+
+		{4: True, 8: True, 16: False, 32: False, 64: False, 128: False, 256: False, 512: False, 1024: False} 
+		
 		]
 
 
 
-		list_print = ["noise at all levels", "no noise at any level", "noise only at finer levels 64 and above", "noise at only 8 level"]
+		list_print = [
+
+					"noise at all levels", 
+					"no noise at any level", 
+					"noise only at finer levels 64 and above", 
+					"noise at only 8 level"
+					
+					]
 		# "noise only at 8"]1
 
 
@@ -492,17 +509,17 @@ class StyleGAN(object):
 		check_folder(result_dir)
 
 
-		load_path = os.path.join(self.result_dir , generated_data_location[0])
-		my_dict_back = np.load(load_path, allow_pickle=True)
+		# load_path = os.path.join(self.result_dir , generated_data_location[0])
+		# my_dict_back = np.load(load_path, allow_pickle=True)
 
-		# using re.findall() 
-		# getting numbers from string  
-		regex_for_numbers = re.findall(r'\d+', load_path ) 
-		res = list(map(int, regex_for_numbers)) 
+		# # using re.findall() 
+		# # getting numbers from string  
+		# regex_for_numbers = re.findall(r'\d+', load_path ) 
+		# res = list(map(int, regex_for_numbers)) 
 		
 
-		counter = res[-3]
-		print("Loaded correct checkpoint with counter {}".format(counter))
+		# counter = res[-3]
+		print("Loading correct checkpoint with counter {}".format(counter_number))
 
 		could_load, checkpoint_counter = self.load(self.checkpoint_dir, counter)
 		
@@ -515,15 +532,18 @@ class StyleGAN(object):
 
 
 
-		real_images = np.load(real_data_location)[:50]
+		real_data_files = sorted(glob( real_data_location + "*.npy"))
 
+		real_images = np.load(real_data_files[0])
+
+		total_seeds = [ np.random.randint(low=0, high=10000) for i in range(10)]
 		# generated_images = my_dict_back.item()["generated_images"][:11]
 
 
-		total_seeds = my_dict_back.item()["seeds"][40:45]
+		# total_seeds = my_dict_back.item()["seeds"][40:45]
 
 
-		src_seeds = total_seeds[:3]
+		src_seeds = total_seeds[:1]
 		# src_seeds = [ x for x in src_seeds for i in range(noise_times) ] 
 		# dst_seeds = total_seeds[5:]
 		# src_seeds = [604, 8440, 7613, 6978, 3004]
@@ -634,7 +654,16 @@ class StyleGAN(object):
 				# fig.add_subplot(  len(noise_variations)+1, len(src_seeds),  idx)
 				if(plot_spectral):
 					# generated_images = my_dict_back.item()["generated_images"][:11]
-					sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
+					
+					tke_gen = TKE_GEN(src_image)
+					tke_real = TKE_REAL(real_images)
+
+					sp1D_gen = tke2spectrum(tke_gen, self.img_size)
+					sp1D_real = tke2spectrum(tke_real, self.img_size)
+					
+					# sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
+					
+
 					axs[idx, col].plot(sp1D_gen, '-r', label='generated_image')
 					axs[idx, col].set_xscale("log")
 					axs[idx, col].set_yscale("log")
@@ -765,54 +794,75 @@ def tke2spectrum(tke, res, dash=None):
 
 
 
+def TKE_GEN(arr, avg=True):
+	avg_velocity = np.mean(arr, axis=0, keepdims=True);  # (1, 256, 256, 2)
+	if avg:
+		tke = 0.5*np.mean((arr[:, :, :, 0] - avg_velocity[:, :, :, 0])**2 +
+						  (arr[:, :, :, 1] - avg_velocity[:, :, :, 1])**2, axis=0);
+	else:
+		tke = 0.5*((arr[:, :, :, 0] - avg_velocity[:, :, :, 0])**2 +
+				   (arr[:, :, :, 1] - avg_velocity[:, :, :, 1])**2);
+	
+	return tke
 
 
 
+def TKE_REAL(arr, avg=True):
+	avg_velocity = np.mean(arr, axis=0, keepdims=True);  # (1, 2, 256, 256)
+	if avg:
+		tke = 0.5*np.mean((arr[:, 0, :, :] - avg_velocity[:, 0, :, :])**2 +
+						  (arr[:, 1, :, :] - avg_velocity[:, 1, :, :])**2, axis=0);
+	else:
+		tke = 0.5*((arr[:, 0, :, :] - avg_velocity[:, 0, :, :])**2 +
+				   (arr[:, 1, :, :] - avg_velocity[:, 1, :, :])**2);
+	
+	return tke
 
 
-def plot_tke(generated_data, real_images, res, dataset_location):
+
+# def plot_tke(generated_data, real_images, res, dataset_location):
 
 
-	ux_data = generated_data[ :, :, 0]
-	uy_data = generated_data[ :, :, 1]
+# 	ux_data = generated_data[ :, :, 0]
+# 	uy_data = generated_data[ :, :, 1]
 
-	ux_real = real_images[:, 0, :, :]
-	uy_real = real_images[:, 1, :, :]
+# 	ux_real = real_images[:, 0, :, :]
+# 	uy_real = real_images[:, 1, :, :]
 
 
-	# load_dir_path = "/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/one_seventh/rbc_3500/noramlized_by_max/"
+# 	# load_dir_path = "/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/one_seventh/rbc_3500/noramlized_by_max/"
 
 
 	
-	load_path =  "/data0/rgupta2/dataset/rbc_500/max_normalized/tke_average_energies_{}.npy".format(res)
-	my_dict_back = np.load(load_path, allow_pickle=True)	
-	real_ux_average_over_time = my_dict_back.item()["256_ux"]
-	real_uy_average_over_time = my_dict_back.item()["256_uy"]
-	# max_value = my_dict_back.item()["max_value"]
+# 	load_path =  "/data0/rgupta2/dataset/rbc_500/max_normalized/tke_average_energies_{}.npy".format(res)
+# 	my_dict_back = np.load(load_path, allow_pickle=True)	
+# 	real_ux_average_over_time = my_dict_back.item()["256_ux"]
+# 	real_uy_average_over_time = my_dict_back.item()["256_uy"]
+# 	# max_value = my_dict_back.item()["max_value"]
  
 
 
 
 
-	load_path =  "/data0/rgupta2/wo_style_rbc_model_weights/results/average_velocity/generator_354218_average_velocities.npy".format(res)
-	my_dict_back = np.load(load_path, allow_pickle=True)	
+# 	load_path =  "/data0/rgupta2/wo_style_rbc_model_weights/results/average_velocity/generator_354218_average_velocities.npy".format(res)
+# 	my_dict_back = np.load(load_path, allow_pickle=True)	
 
 
-	fake_ux_average_over_time = my_dict_back.item()["256_ux"]
-	fake_uy_average_over_time = my_dict_back.item()["256_uy"]
-	# max_value = my_dict_back.item()["max_value"]
+# 	fake_ux_average_over_time = my_dict_back.item()["256_ux"]
+# 	fake_uy_average_over_time = my_dict_back.item()["256_uy"]
+# 	# max_value = my_dict_back.item()["max_value"]
  
 
 
 
 
-	tke_gen = ((ux_data[0] - fake_ux_average_over_time)**2 + (uy_data[0] - fake_uy_average_over_time)**2)
-	tke_real = ((ux_real[0] - real_ux_average_over_time)**2 + (uy_real[0] - real_uy_average_over_time)**2)
+# 	tke_gen = ((ux_data[0] - fake_ux_average_over_time)**2 + (uy_data[0] - fake_uy_average_over_time)**2)
+# 	tke_real = ((ux_real[0] - real_ux_average_over_time)**2 + (uy_real[0] - real_uy_average_over_time)**2)
 
-	sp1D_gen = tke2spectrum(tke_gen, res)
-	sp1D_real = tke2spectrum(tke_real, res)
+# 	sp1D_gen = tke2spectrum(tke_gen, res)
+# 	sp1D_real = tke2spectrum(tke_real, res)
 
-	return sp1D_gen, sp1D_real
+# 	return sp1D_gen, sp1D_real
 	# plot with various axes scales
 
 
@@ -866,6 +916,14 @@ def parse_args():
 
 	parser.add_argument('--name_experiment', type=str, default="", help='generating noise levels at different resolutions')
 
+	# counter_divergence = 462343 
+	# counter_without_divergence = 434218
+
+
+
+	parser.add_argument('--counter_number', type=int, default= 254843,
+						help='number of the model to be loaded (0 makes it load the latest model)')
+
 
 	return check_args(parser.parse_args())
 
@@ -877,7 +935,7 @@ def check_args(args):
 
 
 	experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa",
-								project_name="post_analyzing_{}".format(args.name_experiment, args.dataset), workspace="style-gan")
+								project_name="noise_plots_{}".format(args.name_experiment), workspace="style-gan")
 
 
 
@@ -908,7 +966,7 @@ def main():
 	# parse arguments
 	args, experiment = parse_args()
 	
-	experiment.set_name(" running noise level experiments ")
+	experiment.set_name("noise resolution experiments ")
 	if args is None:
 		exit()
 
@@ -916,13 +974,15 @@ def main():
 	# Assume that you have 12GB of GPU memory and want to allocate ~4GB:
 
 
-	generated_data_location = sorted(glob("/data0/rgupta2/wo_style_rbc_model_weights/results/generator_354218_images_50_file_*.npy"))
+	# generated_data_location = sorted(glob("/data0/rgupta2/wo_style_rbc_model_weights/results/generator_354218_images_50_file_*.npy"))
 
-	real_data_location = sorted(glob("/data0/rgupta2/dataset/rbc_500/max_normalized/*.npy"))[1]
+	# real_data_location = sorted(glob("/data0/rgupta2/dataset/rbc_500/max_normalized/*.npy"))[1]
 	# [-1]
 
 	# generated_data = np.load(generated_data_location, allow_pickle=True).item()["generated_images"]
 
+	real_data_location = "/data0/rgupta2/dataset/rbc_500/max_normalized/"
+	generated_data_location = "/data0/rgupta2/wo_style_rbc_model_weights/results/"
 
 
 

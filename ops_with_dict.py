@@ -264,7 +264,7 @@ def get_style_class(resolutions, featuremaps) :
 
 	return coarse_styles, middle_styles, fine_styles
 
-def synthesis_const_block(res, w_broadcasted, n_f, sn=False):
+def synthesis_const_block(res, w_broadcasted, n_f, noise_dict={4: False, 8: True, 16: True, 32: True, 64: True, 128: True, 256: True, 512: True, 1024: True}, sn=False ):
 	w0 = w_broadcasted[:, 0]
 	w1 = w_broadcasted[:, 1]
 
@@ -276,7 +276,8 @@ def synthesis_const_block(res, w_broadcasted, n_f, sn=False):
 			x = tf.get_variable('Const', shape=[1, 4, 4, n_f], dtype=tf.float32, initializer=tf.initializers.ones())
 			x = tf.tile(x, [batch_size, 1, 1, 1])
 
-			x = apply_noise(x) # B module
+			x = apply_noise(x, res, noise_dict=noise_dict) # B module
+			
 			x = apply_bias(x, lrmul=1.0)
 
 			x = lrelu(x, 0.2)
@@ -285,7 +286,9 @@ def synthesis_const_block(res, w_broadcasted, n_f, sn=False):
 		with tf.variable_scope('Conv'):
 			x = conv(x, channels=n_f, kernel=3, stride=1, gain=np.sqrt(2), lrmul=1.0, sn=sn)
 
-			x = apply_noise(x) # B module
+			
+			x = apply_noise(x, res, noise_dict=noise_dict) # B module
+			
 			x = apply_bias(x, lrmul=1.0)
 
 			x = lrelu(x, 0.2)
@@ -293,7 +296,7 @@ def synthesis_const_block(res, w_broadcasted, n_f, sn=False):
 
 	return x
 
-def synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=False):
+def synthesis_block(x, res, w_broadcasted, layer_index, n_f, noise_dict= {4: False, 8: True, 16: True, 32: True, 64: True, 128: True, 256: True, 512: True, 1024: True}, sn=False):
 	w0 = w_broadcasted[:, layer_index]
 	w1 = w_broadcasted[:, layer_index + 1]
 
@@ -302,7 +305,9 @@ def synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=False):
 			x = upscale_conv(x, n_f, kernel=3, gain=np.sqrt(2), lrmul=1.0, sn=sn)
 			x = blur2d(x, [1, 2, 1])
 
-			x = apply_noise(x) # B module
+
+			x = apply_noise(x, res, noise_dict=noise_dict) # B module
+			
 			x = apply_bias(x, lrmul=1.0)
 
 			x = lrelu(x, 0.2)
@@ -311,7 +316,9 @@ def synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=False):
 		with tf.variable_scope('Conv1'):
 			x = conv(x, n_f, kernel=3, stride=1, gain=np.sqrt(2), lrmul=1.0, sn=sn)
 
-			x = apply_noise(x) # B module
+
+			x = apply_noise(x, res, noise_dict=noise_dict) # B module
+			
 			x = apply_bias(x, lrmul=1.0)
 
 			x = lrelu(x, 0.2)
@@ -397,11 +404,13 @@ def style_mod(x, w):
 
 	return x
 
-def apply_noise(x):
+def apply_noise(x, res, noise_dict={4: False, 8: True, 16: True, 32: True, 64: True, 128: True, 256: True, 512: True, 1024: True}):
 	with tf.variable_scope('Noise'):
 		noise = tf.random_normal([tf.shape(x)[0], x.shape[1], x.shape[2], 1])
 		weight = tf.get_variable('weight', shape=[x.get_shape().as_list()[-1]], initializer=tf.initializers.zeros())
 		weight = tf.reshape(weight, [1, 1, 1, -1])
+		if(not noise_dict[res]):
+			weight = weight * tf.zeros(shape=weight.get_shape().as_list(), dtype=tf.dtypes.float32)
 		x = x + noise * weight
 
 	return x
@@ -658,4 +667,5 @@ def get_end_iteration(iter, max_iter, do_trans, res_list, start_res) :
 			end_iter -= iter // 2
 
 	return end_iter
+
 

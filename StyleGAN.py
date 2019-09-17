@@ -5,6 +5,17 @@ import tensorflow
 
 
 
+"""
+
+wgan with gradient penalty
+
+keep the general paradigm of non-saturating loss, with add wasserstein loss : 
+
+check the shapes of final layers of discriminator 
+the output of w-gan would be twice due to gradient penalty
+
+"""
+
 print(tensorflow.__version__)
 
 from tensorflow.contrib.data import prefetch_to_device, shuffle_and_repeat, map_and_batch
@@ -568,7 +579,7 @@ class StyleGAN(object):
 								# print("#########################\n\n\n\n")
 								# print("starting fake logits now")
 								fake_logit = self.discriminator(fake_img, alpha, res)
-
+								print("****** fake_logit shape {} ".format(fake_logit.shape))
 								# compute loss
 								d_loss, g_loss, r1_penalty = compute_loss(real_img, real_logit, fake_logit)
 

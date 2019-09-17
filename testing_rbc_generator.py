@@ -563,7 +563,7 @@ def parse_args():
 	parser.add_argument('--max_iteration', type=int, default=2500, help='The total number of images')
 
 	parser.add_argument('--batch_size', type=int, default=1, help='The size of batch in the test phase')
-	parser.add_argument('--gpu_num', type=int, default=2, help='The number of gpu')
+	parser.add_argument('--gpu_num', type=int, default=1, help='The number of gpu')
 
 	parser.add_argument('--progressive', type=str2bool, default=True, help='use progressive training')
 	parser.add_argument('--sn', type=str2bool, default=False, help='use spectral normalization')
@@ -605,7 +605,7 @@ def parse_args():
 
 
 
-	parser.add_argument('--counter_number', type=int, default=434218,
+	parser.add_argument('--counter_number', type=int, default= 254843,
 						help='number of the model to be loaded (0 makes it load the latest model)')
 
 
