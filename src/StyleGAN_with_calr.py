@@ -25,6 +25,9 @@ from tqdm import tqdm
 
 from RAdam import RAdamOptimizer
 
+
+import clr
+
 class StyleGAN(object):
 
 	def __init__(self, sess, args, experiment):
@@ -33,18 +36,19 @@ class StyleGAN(object):
 		self.experiment = experiment
 		self.phase = args.phase
 		self.progressive = args.progressive
-		self.divergence_loss_flag = False
-		self.model_name = "StyleGAN"
+
+		self.model_name = "Climate-	StyleGAN"
 		self.sess = sess
 		self.dataset_name = args.dataset
 		self.checkpoint_dir = args.checkpoint_dir
 		self.sample_dir = args.sample_dir
-		self.result_dir = args.result_dir
+		self.result_dir = args.result_dir	
 		self.log_dir = args.log_dir
 
 		self.iteration = args.iteration * 10000
 		self.max_iteration = args.max_iteration * 10000
 
+		self.climate_img_size = args.climate_img_size
 		self.batch_size = args.batch_size
 		self.img_size = args.img_size
 
@@ -60,8 +64,25 @@ class StyleGAN(object):
 
 		self.gpu_num = args.gpu_num
 
+
+
+		"""
+		parameters to experiment with
+
+		"""
+
+		"""
+		removing validation phase from the model, i.e. no more saving files at differnet resolutions a
+
+
+		"""
+
+		self.store_images_flag = False
 		self.style_mixing_flag = args.style_mixing_flag
-		self.divergence_lambda = 10
+		self.divergence_lambda = 0.00
+		self.divergence_loss_flag = False
+		self.plotting_histogram_images = 64
+
 
 		self.z_dim = 512
 		self.w_dim = 512
@@ -106,44 +127,34 @@ class StyleGAN(object):
 		self.test_num = args.test_num
 		self.seed = args.seed
 
-		self.plotting_histogram_images = 64
 
-		self.rbc_data = self.dataset_name.startswith("rbc")
+
+		self.climate_data = self.dataset_name.startswith("climate")
 		self.dataset_location = args.dataset_location
 
-		if(self.rbc_data):
+		if(self.climate_data):
 			self.dataset = load_from_numpy(self.dataset_name, self.dataset_location)
-			self.dataset_num = 3500 * len(self.dataset)
+
+			"""
+			dataset_num is approximate based on number of samples for one full year, note that all files do not correspond to a single year
+
+			"""
+			self.dataset_num = 2920 * len(self.dataset)
 		else:
 			self.dataset = load_data(dataset_name=self.dataset_name)
 			self.dataset_num = len(self.dataset)
 
 
-		"""
-		removing validation phase from the model, i.e. no more saving files at differnet resolutions a
-
-
-		"""
-
-		self.store_images_flag = False
 
 
 		self.sample_dir = os.path.join(self.sample_dir, self.model_dir)
 		check_folder(self.sample_dir)
 
-
-
-
-
-
-
-
-
 		print("\n\n")
 
 		print("##### Information #####")
 		print("# dataset : ", self.dataset_name)
-		print("# dataset number : ", self.dataset_num)
+		# print("# dataset number : ", self.dataset_num)
 		print("# gpu : ", self.gpu_num)
 		print("# batch_size in train phase : ", self.batch_sizes)
 		print("# batch_size in test phase : ", self.batch_size)
@@ -159,7 +170,6 @@ class StyleGAN(object):
 		print("# spectral normalization : ", self.sn)
 		print("# store images: {}".format(self.store_images_flag))
 		print("# use divergence in loss: {}".format(self.divergence_loss_flag))
-
 
 		print("\n\n")
 
@@ -199,17 +209,7 @@ class StyleGAN(object):
 			""" remaining layers """
 			if self.progressive :
 
-
-				# if(self.rbc_data):
-				# 	images_out = x
-				# else:
-				
-				
-
 				images_out = torgb(x, res, input_channels=self.input_channels, sn=self.sn)
-				
-				
-				
 				coarse_styles.pop(res, None)
 
 				# Coarse style [4 ~ 8]
@@ -238,13 +238,10 @@ class StyleGAN(object):
 				# facial features, eye
 				for res, n_f in middle_styles.items():
 					x = synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=self.sn)
-					# if(self.rbc_data):
-					# 	img = x
-					# else:
-					
+
 					img = torgb(x, res, self.input_channels,  sn=self.sn)
 					
-					# print("@@ G_synthesis after torgb  x:{}   input_channels:{} ".format( img.shape, self.input_channels)) 
+
 					images_out = upscale2d(images_out)
 					images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
 
@@ -255,11 +252,8 @@ class StyleGAN(object):
 				for res, n_f in fine_styles.items():
 					x = synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=self.sn)
 					
-					# if(self.rbc_data):
-					# 	img = x
-					# else:
-					img = torgb(x, res, self.input_channels, sn=self.sn)
-					
+
+					img = torgb(x, res, self.input_channels, sn=self.sn)					
 					images_out = upscale2d(images_out)
 					images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
 
@@ -271,10 +265,6 @@ class StyleGAN(object):
 
 					layer_index += 2
 
-				# if(self.rbc_data):
-				# 	images_out = x
-				# else:
-				
 				images_out = torgb(x, resolutions[-1], self.input_channels, sn=self.sn)
 	
 			return images_out
@@ -328,16 +318,8 @@ class StyleGAN(object):
 			r_resolutions = resolutions[::-1]
 			r_featuremaps = featuremaps[::-1]
 
-			
-			
-			# """ set inputs """
-			# if(self.rbc_data):
-			# 	x = x_init
-			# else:
-				
 			x = fromrgb(x_init, r_resolutions[0], r_featuremaps[0], self.sn)
-				# print("scope of x after fromrgb: ", x.name)	
-				# print("shape of x after fromrgb: ", tf.keras.backend.eval(tf.shape(x)))
+
 
 			""" stack discriminator blocks """
 			for index, (res, n_f) in enumerate(zip(r_resolutions[:-1], r_featuremaps[:-1])):
@@ -347,17 +329,8 @@ class StyleGAN(object):
 				x = discriminator_block(x, res, n_f, n_f_next, self.sn)
 
 				if self.progressive :
-					x_init = downscale2d(x_init)
-
-					# if(self.rbc_data):
-					# 	y = x_init		
-					# else:
-					
+					x_init = downscale2d(x_init)					
 					y = fromrgb(x_init, res_next, n_f_next, self.sn)
-
-
-					 
-
 					x = smooth_transition(y, x, res, r_resolutions[0], alpha)
 					
 
@@ -488,7 +461,7 @@ class StyleGAN(object):
 								image_class = ImageData(res)
 
 
-								if(self.rbc_data):
+								if(self.climate_data):
 									"""
 									npy_file is just to calculate the common header across all the files, in self.dataset 
 									self.dataset = list of chosen files
@@ -496,11 +469,11 @@ class StyleGAN(object):
 									"""
 									
 									npy_file = self.dataset[0]
-									num_features = 2 * 256 * 256
+									num_features = self.input_channels * self.climate_img_size * self.climate_img_size
 									dtype = tf.float32
 									header_offset = npy_header_offset(npy_file)
 									dataset = tf.data.FixedLengthRecordDataset(self.dataset, num_features * dtype.size, header_bytes=header_offset)
-									dataset = dataset.map(lambda s: tf.image.resize( tf.transpose(tf.reshape(tf.decode_raw(s, dtype), [2,256,256]) , perm=[1,2,0]), size=[res, res], method=tf.image.ResizeMethod.BILINEAR), num_parallel_calls=4)
+									dataset = dataset.map(lambda s: tf.image.resize( tf.transpose(tf.reshape(tf.decode_raw(s, dtype), [self.input_channels,self.climate_img_size, self.climate_img_size]) , perm=[1,2,0]), size=[res, res], method=tf.image.ResizeMethod.BILINEAR), num_parallel_calls=4)
  
 
 
@@ -565,7 +538,7 @@ class StyleGAN(object):
 								# print("fake_img: ",fake_img.shape)
 								
 
-								# if(not self.rbc_data):
+								# if(not self.climate_data):
 								real_img = smooth_crossfade(real_img, alpha)
 
 
@@ -579,7 +552,7 @@ class StyleGAN(object):
 								# print("#########################\n\n\n\n")
 								# print("starting fake logits now")
 								fake_logit = self.discriminator(fake_img, alpha, res)
-								print("****** fake_logit shape {} ".format(fake_logit.shape))
+								# print("****** fake_logit shape {} ".format(fake_logit.shape))
 								# compute loss
 								d_loss, g_loss, r1_penalty = compute_loss(real_img, real_logit, fake_logit)
 
@@ -597,8 +570,8 @@ class StyleGAN(object):
 				# print("Create graph for {} resolution".format(res))
 
 
-
-				self.divergence_fake[res], self.divergence_real[res] = calculate_divergence_tf( tf.concat(fake_images_per_gpu, axis=0)[-batch_size * self.gpu_num:], tf.concat(real_images_per_gpu, axis=0)[-batch_size * self.gpu_num:])
+				if(self.divergence_loss_flag):
+					self.divergence_fake[res], self.divergence_real[res] = calculate_divergence_tf( tf.concat(fake_images_per_gpu, axis=0)[-batch_size * self.gpu_num:], tf.concat(real_images_per_gpu, axis=0)[-batch_size * self.gpu_num:])
 
 				# prepare appropriate training vars
 				d_vars, g_vars = filter_trainable_variables(res)
@@ -633,19 +606,27 @@ class StyleGAN(object):
 
 
 
-				d_optim = tf.train.AdamOptimizer(d_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(d_loss,
-																									 var_list=d_vars,
-																									 colocate_gradients_with_ops=colocate_grad)
+				d_optim = tf.train.AdamOptimizer( learning_rate=clr.cyclic_learning_rate(global_step=global_step, learning_rate = d_lr, mode='triangular2'), beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(d_loss,var_list=d_vars,global_step=global_step,colocate_gradients_with_ops=colocate_grad)
+
+
+
+
+				# d_optim = tf.train.AdamOptimizer(d_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(d_loss,var_list=d_vars,colocate_gradients_with_ops=colocate_grad)
 
 				# g_optim = RAdamOptimizer(learning_rate= 0.001, beta1=0.9, beta2=0.999, weight_decay=0.0)\
 				# 	.minimize(g_loss, var_list=g_vars, global_step=global_step, colocate_gradients_with_ops=colocate_grad)
 				
 
 
-				g_optim = tf.train.AdamOptimizer(g_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(g_loss,
-																									 var_list=g_vars,
-																									 global_step=global_step,
-																									 colocate_gradients_with_ops=colocate_grad)
+				# g_optim = tf.train.AdamOptimizer(g_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(g_loss,var_list=g_vars,global_step=global_step,colocate_gradients_with_ops=colocate_grad)
+
+				"""
+					trying cyclical annealed learning rate 
+
+				"""
+
+				g_optim = tf.train.AdamOptimizer( learning_rate=clr.cyclic_learning_rate(global_step=global_step, learning_rate = g_lr, mode='triangular2'), beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(g_loss,var_list=g_vars,global_step=global_step,colocate_gradients_with_ops=colocate_grad)
+
 
 
 				self.discriminator_optim[res] = d_optim
@@ -668,7 +649,6 @@ class StyleGAN(object):
 
 
 				self.alpha_stored_per_res[res] = alpha
-
 
 
 
@@ -797,7 +777,9 @@ class StyleGAN(object):
 																			 self.g_loss_per_res[current_res]])
 
 
-				r1_loss, divergence_fake, divergence_real, alpha = self.sess.run([self.r1_penalty[current_res], self.divergence_fake[current_res], self.divergence_real[current_res], self.alpha_stored_per_res[current_res] ])
+				r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res] ])
+
+				# divergence_fake, divergence_real, alpha = self.sess.run([self.r1_penalty[current_res], self.divergence_fake[current_res], self.divergence_real[current_res], self.alpha_stored_per_res[current_res] ])
 
 				self.writer.add_summary(summary_g_per_res, idx)
 				self.writer.add_summary(summary_alpha, idx)
@@ -809,15 +791,15 @@ class StyleGAN(object):
 				self.experiment.log_metric("d_loss",d_loss,step=counter)
 				self.experiment.log_metric("g_loss",g_loss,step=counter)
 				self.experiment.log_metric("r1_penalty", r1_loss,step=counter)
-				self.experiment.log_metric("divergence_real", divergence_real, step=counter)
-				self.experiment.log_metric("divergence_fake", divergence_fake, step=counter)
+				# self.experiment.log_metric("divergence_real", divergence_real, step=counter)
+				# self.experiment.log_metric("divergence_fake", divergence_fake, step=counter)
 				self.experiment.log_metric("alpha value ", alpha, step=counter)
 
 
 
 				
-				print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  divergence_fake : %.4f" \
-					  % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha, divergence_fake))
+				print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  " \
+					  % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))
 
 
 
@@ -860,15 +842,15 @@ class StyleGAN(object):
 					manifold_w = int(np.floor(np.sqrt(batch_size_per_res)))
 
 
-					if(self.rbc_data):
+					if(self.climate_data):
 
 						"""
 		
 						### To DO a non hacky way to add subarrays continuously 
 
 						"""
-						self.generated_images_stored.append(samples)
-						self.real_images_stored.append(real_samples)
+						# self.generated_images_stored.append(samples)
+						# self.real_images_stored.append(real_samples)
 						
 						# try:
 						# 	self.ux_images_stored.concatenate( axis=0)
@@ -950,7 +932,7 @@ class StyleGAN(object):
 
 							# calculate_divergence(tmp_fake_images[-self.plotting_histogram_images:, :, :, :] , "./{}/real_and_fake_img_{:04d}_{:06d}.jpg".format(self.sample_dir, current_res, idx + 1), self.experiment, tmp_real_images[-self.plotting_histogram_images:, :, :, :])
 					
-						# exp_figure = imsave(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],  './{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.rbc_data, current_res, self.dataset_location, self.experiment, self.num_images_to_be_shown, real_samples[:, :, :, :] )
+						# exp_figure = imsave(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],  './{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.climate_data, current_res, self.dataset_location, self.experiment, self.num_images_to_be_shown, real_samples[:, :, :, :] )
 					
 						# self.experiment.log_figure(figure=exp_figure,  figure_name="fake images at {} at index {}".format(current_res, idx+1))
 
@@ -958,7 +940,7 @@ class StyleGAN(object):
 					# else:		
 					# 	self.experiment.log_image( (samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w], current_res ), name="fake images generated during training")
 					# 	save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
-					# 				'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.rbc_data)
+					# 				'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.climate_data)
 
 
 
@@ -1047,7 +1029,7 @@ class StyleGAN(object):
 				samples = self.sess.run(self.fake_images)
 
 
-				if(self.rbc_data):
+				if(self.climate_data):
 
 
 
@@ -1057,7 +1039,7 @@ class StyleGAN(object):
 					# else:		
 					# 	self.experiment.log_image( (samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w], current_res ), name="fake images generated during training")
 					# 	save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
-					# 				'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.rbc_data)
+					# 				'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.climate_data)
 
 				# save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
 				# 			'{}/test_fake_img_{}_{}.jpg'.format(result_dir, self.img_size, i))

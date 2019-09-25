@@ -13,7 +13,18 @@ module load python/3.7-anaconda-2019.07
 source activate tf-1.13
 module load tensorflow/gpu-1.13.1-py36
 
-#run the application:
-python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/dataset_prep.py 
+
+#  For years 1995-1998
+# #run the application:
+python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/climateset_prep.py 
  
+
+
+
+
+# For year 2012-2015
+#run the application:
+# python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/read_tarfiles.py 
+ 
+
 

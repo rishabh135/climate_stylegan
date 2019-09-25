@@ -25,6 +25,9 @@ from tqdm import tqdm
 
 from RAdam import RAdamOptimizer
 
+
+import clr
+
 class StyleGAN(object):
 
 	def __init__(self, sess, args, experiment):
@@ -39,7 +42,7 @@ class StyleGAN(object):
 		self.dataset_name = args.dataset
 		self.checkpoint_dir = args.checkpoint_dir
 		self.sample_dir = args.sample_dir
-		self.result_dir = args.result_dir
+		self.result_dir = args.result_dir	
 		self.log_dir = args.log_dir
 
 		self.iteration = args.iteration * 10000
@@ -126,6 +129,7 @@ class StyleGAN(object):
 
 
 
+		self.counter_number = 118240
 		self.climate_data = self.dataset_name.startswith("climate")
 		self.dataset_location = args.dataset_location
 
@@ -410,6 +414,7 @@ class StyleGAN(object):
 			self.alpha_stored_per_res = {}
 			
 
+			self.real_images = {}
 			if(self.store_images_flag):
 				self.fake_images = {}
 				self.real_images = {}
@@ -603,19 +608,24 @@ class StyleGAN(object):
 
 
 
-				d_optim = tf.train.AdamOptimizer(d_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(d_loss,
-																									 var_list=d_vars,
-																									 colocate_gradients_with_ops=colocate_grad)
+
+				d_optim = tf.train.AdamOptimizer(d_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(d_loss,var_list=d_vars,colocate_gradients_with_ops=colocate_grad)
 
 				# g_optim = RAdamOptimizer(learning_rate= 0.001, beta1=0.9, beta2=0.999, weight_decay=0.0)\
 				# 	.minimize(g_loss, var_list=g_vars, global_step=global_step, colocate_gradients_with_ops=colocate_grad)
 				
 
 
-				g_optim = tf.train.AdamOptimizer(g_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(g_loss,
-																									 var_list=g_vars,
-																									 global_step=global_step,
-																									 colocate_gradients_with_ops=colocate_grad)
+				g_optim = tf.train.AdamOptimizer(g_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(g_loss,var_list=g_vars,global_step=global_step,colocate_gradients_with_ops=colocate_grad)
+
+				"""
+					trying cyclical annealed learning rate 
+
+				"""
+
+				# g_optim = tf.train.AdamOptimizer( learning_rate=clr.cyclic_learning_rate(global_step=global_step, learning_rate = g_lr, mode='triangular2') \
+				# , beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(g_loss,var_list=g_vars,global_step=global_step,colocate_gradients_with_ops=colocate_grad)
+
 
 
 				self.discriminator_optim[res] = d_optim
@@ -627,7 +637,9 @@ class StyleGAN(object):
 
 				if(self.store_images_flag):
 					self.fake_images[res] = tf.concat(fake_images_per_gpu, axis=0)
-					self.real_images[res] = tf.concat(real_images_per_gpu, axis=0)
+					
+
+				self.real_images[res] = tf.concat(real_images_per_gpu, axis=0)
 
 
 
@@ -674,7 +686,7 @@ class StyleGAN(object):
 
 
 		# restore check-point if it exits
-		could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+		could_load, checkpoint_counter = self.load(self.checkpoint_dir, self.counter_number)
 		
 		print("checkpoint_counter: ", checkpoint_counter)
 
@@ -766,7 +778,9 @@ class StyleGAN(object):
 																			 self.g_loss_per_res[current_res]])
 
 
-				r1_loss, divergence_fake, divergence_real, alpha = self.sess.run([self.r1_penalty[current_res], self.divergence_fake[current_res], self.divergence_real[current_res], self.alpha_stored_per_res[current_res] ])
+				r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res] ])
+
+				# divergence_fake, divergence_real, alpha = self.sess.run([self.r1_penalty[current_res], self.divergence_fake[current_res], self.divergence_real[current_res], self.alpha_stored_per_res[current_res] ])
 
 				self.writer.add_summary(summary_g_per_res, idx)
 				self.writer.add_summary(summary_alpha, idx)
@@ -778,16 +792,26 @@ class StyleGAN(object):
 				self.experiment.log_metric("d_loss",d_loss,step=counter)
 				self.experiment.log_metric("g_loss",g_loss,step=counter)
 				self.experiment.log_metric("r1_penalty", r1_loss,step=counter)
-				self.experiment.log_metric("divergence_real", divergence_real, step=counter)
-				self.experiment.log_metric("divergence_fake", divergence_fake, step=counter)
+				# self.experiment.log_metric("divergence_real", divergence_real, step=counter)
+				# self.experiment.log_metric("divergence_fake", divergence_fake, step=counter)
 				self.experiment.log_metric("alpha value ", alpha, step=counter)
 
 
 
 				
-				print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  divergence_fake : %.4f" \
-					  % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha, divergence_fake))
+				print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  " \
+					  % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))
 
+
+
+				real_samples = self.sess.run(self.real_images[current_res])
+				self.real_images_stored.append(real_samples)
+
+				if ( np.mod(idx + 1, self.print_freq[current_res]) == 0):
+
+					tmp_real_images = np.concatenate(self.real_images_stored, axis=0)
+					images_to_be_saved = min(1000, tmp_real_images.shape[0])
+					np.save( "{}/real_images_{}_at_index_{}.npy".format(self.result_dir, current_res, idx), tmp_real_images[-images_to_be_saved:, :,:,:])
 
 
 				"""
@@ -797,8 +821,6 @@ class StyleGAN(object):
 				"""
 
 
-				if np.mod(idx + 1, self.save_freq[current_res]) == 0:
-					self.save(self.checkpoint_dir, counter)
 
 
 
@@ -812,7 +834,7 @@ class StyleGAN(object):
 				if ((np.mod(idx + 1, self.print_freq[current_res]) == 0) and self.store_images_flag):
 
 
-					samples = self.sess.run(self.fake_images[current_res])
+					# samples = self.sess.run(self.fake_images[current_res])
 
 					"""
 						Also plotting real samples for transparency purposes
@@ -820,7 +842,7 @@ class StyleGAN(object):
 					
 					real_samples = self.sess.run(self.real_images[current_res])
 
-
+					tmp_real_images = np.concatenate(self.real_images_stored, axis=0)
 
 					# fake_values, real_values = self.sess.run(self.divergence_fake[res], self.divergence_real[res]) 
 
@@ -971,7 +993,7 @@ class StyleGAN(object):
 
 		self.saver.save(self.sess, os.path.join(checkpoint_dir, self.model_name + '.model'), global_step=step)
 
-	def load(self, checkpoint_dir):
+	def load(self, checkpoint_dir, counter_number):
 		print(" [*] Reading checkpoints...")
 		checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
 
@@ -986,11 +1008,38 @@ class StyleGAN(object):
 			print(" [*] Failed to find a checkpoint")
 			return False, 0
 
+
+	# def load(self, checkpoint_dir, counter):
+		
+	# 	# checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
+		
+	# 	print(" [*] Reading checkpoints from  {} with counter {} ".format(checkpoint_dir, counter))
+	# 	if(counter == 0):
+	# 			states = tf.train.get_checkpoint_state(checkpoint_dir)
+	# 			checkpoint_paths = states.all_model_checkpoint_paths
+	# 			load_model_path = checkpoint_paths[-1]
+
+	# 	else:
+	# 		load_model_path =  os.path.join(checkpoint_dir, "Climate StyleGAN.model-{}".format(counter))
+
+
+
+	# 	try:
+	# 		self.saver.restore(self.sess, load_model_path)
+	# 		print(" [*] Success to read {}".format(load_model_path))
+	# 		# counter = int(load_model_path.split('-')[-1])
+	# 		return True, counter
+		
+	# 	except:
+	# 		print(" [*] Failed to find a checkpoint")
+	# 		return False, -1
+
+
 	def test(self):
 		tf.global_variables_initializer().run()
 
 		self.saver = tf.train.Saver()
-		could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+		could_load, checkpoint_counter = self.load(self.checkpoint_dir, self.counter_number)
 		result_dir = os.path.join(self.result_dir, self.model_dir)
 		check_folder(result_dir)
 

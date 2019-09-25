@@ -1,14 +1,9 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
-
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-    
 from comet_ml import Experiment
-
-
-
-from StyleGAN import StyleGAN
+from StyleGAN_with_calr import StyleGAN
 
 
 import argparse
@@ -25,35 +20,36 @@ from utils import *
 
 """parsing and configuration"""
 def parse_args():
-	desc = "Tensorflow implementation of StyleGAN"
+	desc = "Tensorflow implementation of StyleGAN for climate data"
 	parser = argparse.ArgumentParser(description=desc)
 	parser.add_argument('--phase', type=str, default='train', help='[train, test, draw]')
 	parser.add_argument('--draw', type=str, default='uncurated', help='[uncurated, style_mix, truncation_trick]')
-	parser.add_argument('--dataset', type=str, default= "rbc_3500", help='The dataset name what you want to generate')
-
-	parser.add_argument('--iteration', type=int, default=120, help='The number of images used in the train phase')
-	parser.add_argument('--max_iteration', type=int, default=2500, help='The total number of images')
+	parser.add_argument('--dataset', type=str, default= "climate_3000", help='The dataset name what you want to generate')
+	parser.add_argument('--iteration', type=int, default=120, help='The number of images used in the train phase 120k by default')
+	parser.add_argument('--max_iteration', type=int, default=2500, help='The total number of images 2500k by default')
 
 	parser.add_argument('--batch_size', type=int, default=1, help='The size of batch in the test phase')
-	parser.add_argument('--gpu_num', type=int, default=2, help='The number of gpu')
-
+	parser.add_argument('--gpu_num', type=int, default=8, help='The number of gpu')
 	parser.add_argument('--progressive', type=str2bool, default=True, help='use progressive training')
 	parser.add_argument('--sn', type=str2bool, default=False, help='use spectral normalization')
 
 	parser.add_argument('--start_res', type=int, default=8, help='The number of starting resolution')
-	parser.add_argument('--img_size', type=int, default=256, help='The target size of image')
-	parser.add_argument('--test_num', type=int, default=100, help='The number of generating images in the test phase')
 
-	parser.add_argument('--input_channels', type=int, default=2, help='The number of input channels for the input real images')
+	parser.add_argument('--climate_img_size', type=int, default=512, help='Size of original climate data 512 by default')
+	
+	parser.add_argument('--img_size', type=int, default=256, help='The target size of image')
+	
+	parser.add_argument('--test_num', type=int, default=100, help='The number of generating images in the test phase')
+	parser.add_argument('--input_channels', type=int, default=1, help='The number of input channels for the input real images')
 	parser.add_argument('--seed', type=str2bool, default=True, help='seed in the draw phase')
 
-	parser.add_argument('--checkpoint_dir', type=str, default='../stored_outputs/checkpoint',
+	parser.add_argument('--checkpoint_dir', type=str, default='./stored_outputs/wo_norm/checkpoint',
 						help='Directory name to save the checkpoints')
-	parser.add_argument('--result_dir', type=str, default='../stored_outputs/results',
+	parser.add_argument('--result_dir', type=str, default='./stored_outputs/wo_norm/results',
 						help='Directory name to save the generated images')
-	parser.add_argument('--log_dir', type=str, default='../stored_outputs/logs',
+	parser.add_argument('--log_dir', type=str, default='./stored_outputs/wo_norm/logs',
 						help='Directory name to save training logs')
-	parser.add_argument('--sample_dir', type=str, default='../stored_outputs/samples',
+	parser.add_argument('--sample_dir', type=str, default='./stored_outputs/wo_norm/samples',
 						help='Directory name to save the samples on training')
 
 
@@ -65,12 +61,12 @@ def parse_args():
 						help='should there be style mixing of two latents from g_mapping network , default is false')
 
 
-	parser.add_argument('--dataset_location', type=str, default="/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/rbc_500/max/",
+	parser.add_argument('--dataset_location', type=str, default="/global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_original/",
 						help='dataset_directory')
 
 
-	parser.add_argument('--name_experiment', type=str, default="",
-						help='dataset_directory')
+	parser.add_argument('--name_experiment', type=str, default="climate_data_wo_norm",
+						help='name of the experiment, on comet_ml')
 
 
 	return check_args(parser.parse_args())
@@ -81,7 +77,7 @@ def check_args(args):
 	# import comet_ml in the top of your file
 
 	experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa",
-								project_name="{}_{}".format(args.name_experiment, args.dataset), workspace="style-gan")
+								project_name="{}".format("climate-data-calr"), workspace="style-gan")
 
 
 
@@ -115,6 +111,7 @@ def main():
 	if args is None:
 		exit()
 
+	experiment.set_name(args.name_experiment)
 	# open session
 	# Assume that you have 12GB of GPU memory and want to allocate ~4GB:
 	gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.99, allow_growth = True)

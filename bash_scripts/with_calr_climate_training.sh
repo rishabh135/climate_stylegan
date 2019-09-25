@@ -14,7 +14,10 @@ module load cuda/10.0.130
 # module load cudatoolkit/10.0.130_3.22-7.0.0.1_3.3__gdfb4ce5
 # module load nccl
 module load python/3.7-anaconda-2019.07
+
 source activate tf-1.13
+
+
 module load tensorflow/gpu-1.13.1-py36
 
 
@@ -25,6 +28,6 @@ python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --datas
 	--checkpoint_dir ./stored_outputs/wo_norm/checkpoint --result_dir ./stored_outputs/wo_norm/result \
 	--log_dir ./stored_outputs/wo_norm/log --sample_dir ./stored_outputs/wo_norm/sample \
 	--dataset_location /global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_original/ \
-	--name_experiment "without_normalization_climate_data continued from 96990"
+	--name_experiment "without_normalization_climate"
  
 

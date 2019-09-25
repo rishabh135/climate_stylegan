@@ -43,13 +43,13 @@ def parse_args():
 	parser.add_argument('--input_channels', type=int, default=1, help='The number of input channels for the input real images')
 	parser.add_argument('--seed', type=str2bool, default=True, help='seed in the draw phase')
 
-	parser.add_argument('--checkpoint_dir', type=str, default='../stored_outputs/wo_norm/checkpoint',
+	parser.add_argument('--checkpoint_dir', type=str, default='./stored_outputs/wo_norm/checkpoint',
 						help='Directory name to save the checkpoints')
-	parser.add_argument('--result_dir', type=str, default='../stored_outputs/wo_norm/results',
+	parser.add_argument('--result_dir', type=str, default='./stored_outputs/wo_norm/results',
 						help='Directory name to save the generated images')
-	parser.add_argument('--log_dir', type=str, default='../stored_outputs/wo_norm/logs',
+	parser.add_argument('--log_dir', type=str, default='./stored_outputs/wo_norm/logs',
 						help='Directory name to save training logs')
-	parser.add_argument('--sample_dir', type=str, default='../stored_outputs/wo_norm/samples',
+	parser.add_argument('--sample_dir', type=str, default='./stored_outputs/wo_norm/samples',
 						help='Directory name to save the samples on training')
 
 

@@ -30,20 +30,23 @@ class StyleGAN(object):
 
 	def __init__(self, sess, args, experiment):
 
+
 		self.experiment = experiment
 		self.phase = args.phase
 		self.progressive = args.progressive
-		self.model_name = "StyleGAN"
+
+		self.model_name = "Climate StyleGAN"
 		self.sess = sess
 		self.dataset_name = args.dataset
 		self.checkpoint_dir = args.checkpoint_dir
 		self.sample_dir = args.sample_dir
-		self.result_dir = args.result_dir
+		self.result_dir = args.result_dir	
 		self.log_dir = args.log_dir
 
 		self.iteration = args.iteration * 10000
 		self.max_iteration = args.max_iteration * 10000
 
+		self.climate_img_size = args.climate_img_size
 		self.batch_size = args.batch_size
 		self.img_size = args.img_size
 
@@ -52,9 +55,6 @@ class StyleGAN(object):
 		self.resolutions = resolution_list(self.img_size) # [4, 8, 16, 32, 64, 128, 256, 512, 1024 ...]
 		self.featuremaps = featuremap_list(self.img_size) # [512, 512, 512, 512, 256, 128, 64, 32, 16 ...]
 
-		print("resolutions", self.resolutions)
-		print("feature maps", self.featuremaps)
-
 		if not self.progressive :
 			self.resolutions = [self.resolutions[-1]]
 			self.featuremaps = [self.featuremaps[-1]]
@@ -62,7 +62,26 @@ class StyleGAN(object):
 
 		self.gpu_num = args.gpu_num
 
+
+
+		"""
+		parameters to experiment with
+
+		"""
+
+		"""
+		removing validation phase from the model, i.e. no more saving files at differnet resolutions a
+
+
+		"""
+
+		self.store_images_flag = False
 		self.style_mixing_flag = args.style_mixing_flag
+		self.divergence_lambda = 0.00
+		self.divergence_loss_flag = False
+		self.plotting_histogram_images = 64
+
+
 		self.z_dim = 512
 		self.w_dim = 512
 		self.n_mapping = 8
@@ -88,14 +107,13 @@ class StyleGAN(object):
 		self.end_iteration = get_end_iteration(self.iteration, self.max_iteration, self.train_with_trans, self.resolutions, self.start_res)
 		
 
-		print( "self.end_iteration : ", self.end_iteration)
 
 		self.g_learning_rates = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
 		self.d_learning_rates = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
 
 		self.sn = args.sn
 
-		self.print_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 1000, 256: 1000, 512: 10000, 1024: 10000}
+		self.print_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 3000, 256: 5000, 512: 10000, 1024: 10000}
 
 		# self.print_freq = {4: 1000, 8: 500, 16: 500, 32: 500, 64: 100, 128: 100, 256: 10, 512: 10000, 1024: 10000}
 
@@ -107,27 +125,40 @@ class StyleGAN(object):
 		self.test_num = args.test_num
 		self.seed = args.seed
 
-		self.plotting_histogram_images = 64
 
-		self.rbc_data = self.dataset_name.startswith("rbc")
+
+		self.climate_data = self.dataset_name.startswith("climate")
 		self.dataset_location = args.dataset_location
 
-		if(self.rbc_data):
+		if(self.climate_data):
 			self.dataset = load_from_numpy(self.dataset_name, self.dataset_location)
-			self.dataset_num = 3500 * len(self.dataset)
+
+			"""
+			dataset_num is approximate based on number of samples for one full year, note that all files do not correspond to a single year
+
+			"""
+			self.dataset_num = 2920 * len(self.dataset)
 		else:
 			self.dataset = load_data(dataset_name=self.dataset_name)
 			self.dataset_num = len(self.dataset)
 
-		# self.sample_dir = os.path.join(self.sample_dir, self.model_dir)
+
+
+
+		self.sample_dir = os.path.join(self.sample_dir, self.model_dir)
 		check_folder(self.sample_dir)
+
+		print("\n\n")
 
 		print("##### Information #####")
 		print("# dataset : ", self.dataset_name)
-		print("# dataset number : ", self.dataset_num)
+		# print("# dataset number : ", self.dataset_num)
 		print("# gpu : ", self.gpu_num)
 		print("# batch_size in train phase : ", self.batch_sizes)
 		print("# batch_size in test phase : ", self.batch_size)
+		print( "self.end_iteration : ", self.end_iteration)
+		print("resolutions: ", self.resolutions)
+		print("feature maps: ", self.featuremaps)
 
 		print("# start resolution : ", self.start_res)
 		print("# target resolution : ", self.img_size)
@@ -135,10 +166,10 @@ class StyleGAN(object):
 
 		print("# progressive training : ", self.progressive)
 		print("# spectral normalization : ", self.sn)
+		print("# store images: {}".format(self.store_images_flag))
+		print("# use divergence in loss: {}".format(self.divergence_loss_flag))
 
 		print("\n\n")
-
-
 
 
 	@property
@@ -193,14 +224,7 @@ class StyleGAN(object):
 			""" remaining layers """
 			if self.progressive :
 
-
-				# if(self.rbc_data):
-				# 	images_out = x
-				# else:
-				
-				
-
-				images_out = torgb(x, res, input_channels=self.input_channels, sn=self.sn)				
+				images_out = torgb(x, res, input_channels=self.input_channels, sn=self.sn)
 				coarse_styles.pop(res, None)
 
 				# Coarse style [4 ~ 8]
@@ -209,9 +233,18 @@ class StyleGAN(object):
 
 
 					x = synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=self.sn)
-					img = torgb(x, res, self.input_channels, sn=self.sn)				
+
+
+					img = torgb(x, res, self.input_channels, sn=self.sn)
+
+				
 					images_out = upscale2d(images_out)
+
+					
 					images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
+
+					
+
 					layer_index += 2
 
 
@@ -220,14 +253,13 @@ class StyleGAN(object):
 				# facial features, eye
 				for res, n_f in middle_styles.items():
 					x = synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=self.sn)
-					# if(self.rbc_data):
-					# 	img = x
-					# else:
-					
+
 					img = torgb(x, res, self.input_channels,  sn=self.sn)
 					
+
 					images_out = upscale2d(images_out)
 					images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
+
 					layer_index += 2
 
 				# Fine style [64 ~ 1024]
@@ -235,11 +267,8 @@ class StyleGAN(object):
 				for res, n_f in fine_styles.items():
 					x = synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=self.sn)
 					
-					# if(self.rbc_data):
-					# 	img = x
-					# else:
-					img = torgb(x, res, self.input_channels, sn=self.sn)
-					
+
+					img = torgb(x, res, self.input_channels, sn=self.sn)					
 					images_out = upscale2d(images_out)
 					images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
 
@@ -251,10 +280,6 @@ class StyleGAN(object):
 
 					layer_index += 2
 
-				# if(self.rbc_data):
-				# 	images_out = x
-				# else:
-				
 				images_out = torgb(x, resolutions[-1], self.input_channels, sn=self.sn)
 	
 			return images_out
@@ -293,7 +318,6 @@ class StyleGAN(object):
 
 
 			return x
-
 	##################################################################################
 	# Discriminator
 	##################################################################################
@@ -411,7 +435,7 @@ class StyleGAN(object):
 			load_model_path = checkpoint_paths[-1]
 
 		else:
-			load_model_path =  os.path.join(checkpoint_dir, "StyleGAN.model-{}".format(counter))
+			load_model_path =  os.path.join(checkpoint_dir, "Climate StyleGAN.model-{}".format(counter))
 
 
 
@@ -553,50 +577,53 @@ uy_average_over_time = my_dict_back.item()["{}_uy".format(image_size)]
 
 """parsing and configuration"""
 def parse_args():
-	desc = "Tensorflow implementation of StyleGAN"
+	desc = "Tensorflow implementation of climate StyleGAN"
 	parser = argparse.ArgumentParser(description=desc)
-	parser.add_argument('--phase', type=str, default='test', help='[train, test, draw]')
+	parser.add_argument('--phase', type=str, default='train', help='[train, test, draw]')
 	parser.add_argument('--draw', type=str, default='uncurated', help='[uncurated, style_mix, truncation_trick]')
-	parser.add_argument('--dataset', type=str, default= "rbc_500", help='The dataset name what you want to generate')
-
-	parser.add_argument('--iteration', type=int, default=120, help='The number of images used in the train phase')
-	parser.add_argument('--max_iteration', type=int, default=2500, help='The total number of images')
+	parser.add_argument('--dataset', type=str, default= "climate_3000", help='The dataset name what you want to generate')
+	parser.add_argument('--iteration', type=int, default=120, help='The number of images used in the train phase 120k by default')
+	parser.add_argument('--max_iteration', type=int, default=2500, help='The total number of images 2500k by default')
 
 	parser.add_argument('--batch_size', type=int, default=1, help='The size of batch in the test phase')
-	parser.add_argument('--gpu_num', type=int, default=1, help='The number of gpu')
-
+	parser.add_argument('--gpu_num', type=int, default=8, help='The number of gpu')
 	parser.add_argument('--progressive', type=str2bool, default=True, help='use progressive training')
 	parser.add_argument('--sn', type=str2bool, default=False, help='use spectral normalization')
 
 	parser.add_argument('--start_res', type=int, default=8, help='The number of starting resolution')
+
+	parser.add_argument('--climate_img_size', type=int, default=512, help='Size of original climate data 512 by default')
+	
 	parser.add_argument('--img_size', type=int, default=256, help='The target size of image')
 	
-	parser.add_argument('--test_num', type=int, default=50, help='The number of generating images in the test phase')
-	
-	parser.add_argument('--input_channels', type=int, default=2, help='The number of input channels for the input real images')
+	parser.add_argument('--test_num', type=int, default=100, help='The number of generating images in the test phase')
+	parser.add_argument('--input_channels', type=int, default=1, help='The number of input channels for the input real images')
 	parser.add_argument('--seed', type=str2bool, default=True, help='seed in the draw phase')
 
-	parser.add_argument('--checkpoint_dir', type=str, default='../stored_outputs/checkpoint',
+	parser.add_argument('--checkpoint_dir', type=str, default='./stored_outputs/wo_norm/checkpoint',
 						help='Directory name to save the checkpoints')
-	parser.add_argument('--result_dir', type=str, default='../stored_outputs/results',
+	parser.add_argument('--result_dir', type=str, default='./stored_outputs/wo_norm/results',
 						help='Directory name to save the generated images')
-	parser.add_argument('--log_dir', type=str, default='../stored_outputs/logs',
+	parser.add_argument('--log_dir', type=str, default='./stored_outputs/wo_norm/logs',
 						help='Directory name to save training logs')
-	parser.add_argument('--sample_dir', type=str, default='../stored_outputs/samples',
+	parser.add_argument('--sample_dir', type=str, default='./stored_outputs/wo_norm/samples',
 						help='Directory name to save the samples on training')
+
+
+	parser.add_argument('--divergence_loss_flag', type=bool, default= False,
+						help='should there be added term to the g_loss from divergence , default is false')
 
 
 	parser.add_argument('--style_mixing_flag', type=bool, default= False,
 						help='should there be style mixing of two latents from g_mapping network , default is false')
 
 
-
-	parser.add_argument('--dataset_location', type=str, default="/global/cscratch1/sd/rgupta2/backup/StyleGAN/dataset/rbc_500/max/",
+	parser.add_argument('--dataset_location', type=str, default="/global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_original/",
 						help='dataset_directory')
 
 
-	parser.add_argument('--name_experiment', type=str, default="",
-						help='name of experiment')
+	parser.add_argument('--name_experiment', type=str, default="generating climate_images",
+						help='name of the experiment, on comet_ml')
 
 
 
@@ -605,7 +632,7 @@ def parse_args():
 
 
 
-	parser.add_argument('--counter_number', type=int, default= 254843,
+	parser.add_argument('--counter_number', type=int, default= 87615,
 						help='number of the model to be loaded (0 makes it load the latest model)')
 
 
@@ -618,7 +645,7 @@ def check_args(args):
 	# import comet_ml in the top of your file
 
 	experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa",
-								project_name="inference_{}".format(args.name_experiment, args.dataset), workspace="style-gan")
+								project_name="inference-climate-gan", workspace="style-gan")
 
 
 
@@ -649,7 +676,7 @@ def main():
 	# parse arguments
 	args, experiment = parse_args()
 	
-	experiment.set_name(" generating rbc images ")
+	experiment.set_name(args.name_experiment)
 	if args is None:
 		exit()
 
