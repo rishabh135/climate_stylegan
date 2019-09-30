@@ -22,9 +22,9 @@ module load tensorflow/gpu-1.13.1-py36
 # python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/main.py --dataset FFHQ_128 --img_size 128 --gpu_num 2 --progressive True --phase train
 python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 --input_channels 1 --start_res 8 \
 	--img_size 256 --gpu_num 8 --progressive True --phase train \
-	--checkpoint_dir ./stored_outputs/wo_norm/checkpoint --result_dir ./stored_outputs/wo_norm/result \
-	--log_dir ./stored_outputs/wo_norm/log --sample_dir ./stored_outputs/wo_norm/sample \
-	--dataset_location /global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_original/ \
-	--name_experiment "without_normalization_climate data at 256 resolution"
+	--checkpoint_dir ./stored_outputs/overall_std_norm_256/checkpoint --result_dir ./stored_outputs/overall_std_norm_256/result \
+	--log_dir ./stored_outputs/overall_std_norm_256/log --sample_dir ./stored_outputs/overall_std_norm_256/sample \
+	--dataset_location /global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_normalized_overall_std/\
+	--name_experiment "with_std_normalization_climate data at 256"
  
 

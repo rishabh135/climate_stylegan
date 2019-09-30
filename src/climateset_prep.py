@@ -235,11 +235,92 @@ def climate_data_wo_norm_4d(save_dir_path, list_of_years):
 
 
 
-def climate_data_with_max_norm_4d(save_dir_path, list_of_years):
+
+
+
+
+
+##########################################################################################
+##########################################################################################
+
+
+# Calculating normalized data with 4d shape across overall std 
+
+
+##########################################################################################
+##########################################################################################
+
+
+
+def calculate_std_over_all_years():
+
+	load_file_path = "/global/cscratch1/sd/karthik_/CAM5.1_0.25degree/CAM5-1-0.25degree_All-Hist_est1_v3_run1.cam.h3.*.nc"
+
+	files = sorted(glob(load_file_path))
+
+	print("\n files found in the current directory for year  = {}".format( len(files)))
+	list_of_omega_data = []    
+	for _, file in enumerate(files):
+
+		tmp_ds = xr.open_dataset(file, decode_times=False)
+		list_of_omega_data.append( np.expand_dims(tmp_ds["OMEGA500"][:, 128:640, 320:832].values, axis=1))
+
+
+	tt = time.time()
+	numpy_array_of_omega = np.concatenate(list_of_omega_data, axis=0)
+	mode = stats.mode(numpy_array_of_omega, axis=None)
+
+
+	print("\n\n****** data from all years (1995-98)  [:, 128:640, 320:832] shape {}, max {} min {} std {} mean {} mode {} and frequency of mode : {}  \n\n ".format( numpy_array_of_omega.shape, numpy_array_of_omega.max(), numpy_array_of_omega.min(), numpy_array_of_omega.std(), numpy_array_of_omega.mean(), mode[0], mode[1] ))
+
+	return numpy_array_of_omega.std()	
+
+##########################################################################################
+##########################################################################################
+
+#  statistics for the overall_std_normalized data 
+
+##########################################################################################
+##########################################################################################
+
+
+
+# ****** data from all years (1995-98)  [:, 128:640, 320:832] shape (10568, 1, 512, 512), max 9.571378707885742 min -13.53
+# 394603729248 std 0.20382769405841827 mean -0.0012632719008252025 mode [0.06919879] and frequency of mode : [124]
+
+
+
+#  files found in the current directory for year 1995 = 334
+# Time taken to complete iteration with shape (2672, 1, 1, 512, 512) in time 5.927042722702026
+
+#  files found in the current directory for year 1996 = 365
+# Time taken to complete iteration with shape (2920, 1, 1, 512, 512) in time 6.5855934619903564
+
+#  files found in the current directory for year 1997 = 365
+# Time taken to complete iteration with shape (2920, 1, 1, 512, 512) in time 6.580164909362793
+
+#  files found in the current directory for year 1998 = 257
+# Time taken to complete iteration with shape (2056, 1, 1, 512, 512) in time 4.311551570892334
+
+
+##########################################################################################
+##########################################################################################
+
+#  statistics for the overall_std_normalized data 
+
+##########################################################################################
+##########################################################################################
+
+
+def climate_data_with_std_norm_4d(save_dir_path, list_of_years):
 
 
 	""" saving omega data as original without any normalization"""
 	t=time.time()
+
+	overall_std = calculate_std_over_all_years()
+
+
 	for year in list_of_years:
 		
 		load_file_path = "/global/cscratch1/sd/karthik_/CAM5.1_0.25degree/CAM5-1-0.25degree_All-Hist_est1_v3_run1.cam.h3.{}-*.nc".format(year)
@@ -254,28 +335,70 @@ def climate_data_with_max_norm_4d(save_dir_path, list_of_years):
 			list_of_omega_data.append( np.expand_dims(tmp_ds["OMEGA500"][:, 128:640, 320:832].values, axis=1))
 
 		tt = time.time()
-		numpy_array_of_omega = np.concatenate(list_of_omega_data, axis=0)
 
-		mode = stats.mode(numpy_array_of_omega, axis=None)
-		
-		
-		print("\n\n****** data from year {}  [:, 128:640, 320:832] shape {}, max {} min {} std {} mean {} mode {} and frequency of mode : {}  \n\n ".format(year, numpy_array_of_omega.shape, numpy_array_of_omega.max(), numpy_array_of_omega.min(), numpy_array_of_omega.std(), numpy_array_of_omega.mean(), mode[0], mode[1] ))
-		
-		# save_path = os.path.join(save_dir_path , "climate_data_original/")
+		numpy_array_of_omega = np.true_divide(np.concatenate(list_of_omega_data, axis=0), overall_std)
 
-		# if not os.path.exists(save_path):
-		# 	os.makedirs(save_path)
 
-		# np.save( str(save_path) + "{}.npy".format(year), numpy_array_of_omega)
-		# print("Time taken to complete iteration", time.time() - tt)
+		# mode = stats.mode(numpy_array_of_omega, axis=None)
 		
+		
+		# print("\n\n****** data from year {}  [:, 128:640, 320:832] shape {}, max {} min {} std {} mean {} mode {} and frequency of mode : {}  \n\n ".format(year, numpy_array_of_omega.shape, numpy_array_of_omega.max(), numpy_array_of_omega.min(), numpy_array_of_omega.std(), numpy_array_of_omega.mean(), mode[0], mode[1] ))
+		
+		save_path = os.path.join(save_dir_path , "climate_data_normalized_overall_std/")
+
+		if not os.path.exists(save_path):
+			os.makedirs(save_path)
+
+		numpy_array_of_omega = np.expand_dims(numpy_array_of_omega, axis= 1)
+
+		np.save( str(save_path) + "{}.npy".format(year), numpy_array_of_omega)
+		print("Time taken to complete iteration with shape {} in time {} ".format( numpy_array_of_omega.shape ,time.time() - tt))
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##########################################################################################
+##########################################################################################
+
+
+# Overall Driving functions with relevant years and the save path for the datasets 
+
+
+##########################################################################################
+##########################################################################################
+
 
 
 save_dir_path = "/global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/"
 list_of_years = ["1995", "1996", "1997", "1998"]
 print("Started running the program")
 
-climate_data_with_max_norm_4d(save_dir_path, list_of_years)
+
+climate_data_with_std_norm_4d(save_dir_path, list_of_years)
 
 # climate_data_wo_norm_4d(save_dir_path, list_of_years)
 

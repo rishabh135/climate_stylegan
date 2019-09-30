@@ -37,7 +37,7 @@ class StyleGAN(object):
 		self.phase = args.phase
 		self.progressive = args.progressive
 
-		self.model_name = "Climate StyleGAN"
+		self.model_name = "Climate-StyleGAN"
 		self.sess = sess
 		self.dataset_name = args.dataset
 		self.checkpoint_dir = args.checkpoint_dir
