@@ -639,7 +639,7 @@ class StyleGAN(object):
 					self.fake_images[res] = tf.concat(fake_images_per_gpu, axis=0)
 					
 
-				self.real_images[res] = tf.concat(real_images_per_gpu, axis=0)
+				# self.real_images[res] = tf.concat(real_images_per_gpu, axis=0)
 
 
 
