@@ -414,10 +414,10 @@ class StyleGAN(object):
 			self.alpha_stored_per_res = {}
 			
 
-			self.real_images = {}
-			if(self.store_images_flag):
-				self.fake_images = {}
-				self.real_images = {}
+			# self.real_images = {}
+			# if(self.store_images_flag):
+			# 	self.fake_images = {}
+			# 	self.real_images = {}
 
 
 			self.divergence_fake = {}
@@ -430,8 +430,8 @@ class StyleGAN(object):
 
 				r1_penalty_list = []
 
-				fake_images_per_gpu = []
-				real_images_per_gpu = []
+				# fake_images_per_gpu = []
+				# real_images_per_gpu = []
 				
 
 
@@ -566,8 +566,8 @@ class StyleGAN(object):
 								# print("\n\n\n")
 								r1_penalty_list.append(r1_penalty)
 								
-								fake_images_per_gpu.append(fake_img)
-								real_images_per_gpu.append(real_img)
+								# fake_images_per_gpu.append(fake_img)
+								# real_images_per_gpu.append(real_img)
 
 				# print("Create graph for {} resolution".format(res))
 
@@ -743,8 +743,8 @@ class StyleGAN(object):
 
 
 
-			self.generated_images_stored = []
-			self.real_images_stored = []
+			# self.generated_images_stored = []
+			# self.real_images_stored = []
 
 			current_res = self.resolutions[current_res_num]
 			batch_size_per_res = self.batch_sizes.get(current_res, self.batch_size_base) * self.gpu_num
@@ -804,14 +804,14 @@ class StyleGAN(object):
 
 
 
-				real_samples = self.sess.run(self.real_images[current_res])
-				self.real_images_stored.append(real_samples)
+				# real_samples = self.sess.run(self.real_images[current_res])
+				# self.real_images_stored.append(real_samples)
 
-				if ( np.mod(idx + 1, self.print_freq[current_res]) == 0):
+				# if ( np.mod(idx + 1, self.print_freq[current_res]) == 0):
 
-					tmp_real_images = np.concatenate(self.real_images_stored, axis=0)
-					images_to_be_saved = min(1000, tmp_real_images.shape[0])
-					np.save( "{}/real_images_{}_at_index_{}.npy".format(self.result_dir, current_res, idx), tmp_real_images[-images_to_be_saved:, :,:,:])
+				# 	tmp_real_images = np.concatenate(self.real_images_stored, axis=0)
+				# 	images_to_be_saved = min(1000, tmp_real_images.shape[0])
+				# 	np.save( "{}/real_images_{}_at_index_{}.npy".format(self.result_dir, current_res, idx), tmp_real_images[-images_to_be_saved:, :,:,:])
 
 
 				"""
