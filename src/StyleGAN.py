@@ -129,7 +129,7 @@ class StyleGAN(object):
 
 
 
-		self.counter_number = 118240
+		# self.counter_number = 118240
 		self.climate_data = self.dataset_name.startswith("climate")
 		self.dataset_location = args.dataset_location
 
@@ -686,7 +686,7 @@ class StyleGAN(object):
 
 
 		# restore check-point if it exits
-		could_load, checkpoint_counter = self.load(self.checkpoint_dir, self.counter_number)
+		could_load, checkpoint_counter = self.load(self.checkpoint_dir)
 		
 		print("checkpoint_counter: ", checkpoint_counter)
 
@@ -993,7 +993,7 @@ class StyleGAN(object):
 
 		self.saver.save(self.sess, os.path.join(checkpoint_dir, self.model_name + '.model'), global_step=step)
 
-	def load(self, checkpoint_dir, counter_number):
+	def load(self, checkpoint_dir):
 		print(" [*] Reading checkpoints...")
 		checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
 
