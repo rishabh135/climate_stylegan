@@ -39,6 +39,7 @@ def build_input_pipeline(filelist, res, batch_size, gpu_device):
                                                num_parallel_reads=4)
     dataset = dataset.map(lambda img: parse_fn(img, res, shape[0], shape[1], dtype),
                           num_parallel_calls=4)
+    dataset = dataset.repeat(None)
     dataset = dataset.shuffle(batch_size*100)
     dataset = dataset.batch(batch_size, drop_remainder=True)
     dataset = dataset.prefetch(10)
