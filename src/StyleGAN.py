@@ -590,11 +590,14 @@ class StyleGAN(object):
         self.experiment.log_metric("r1_penalty", r1_loss,step=counter)
         self.experiment.log_metric("alpha value ", alpha, step=counter)
 
-        if self.power_spectra_loss:
-          self.experiment.log_metric("ps_loss", ps_loss, step=counter)
-
-        print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  " \
-            % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))
+        if idx%100:
+          if self.power_spectra_loss:
+            self.experiment.log_metric("ps_loss", ps_loss, step=counter)
+            print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f, ps_loss: %.4f" \
+                  % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha, ps_loss))
+          else:
+            print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  " \
+                  % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))
 
       start_batch_idx = 0
 
