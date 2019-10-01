@@ -6,6 +6,7 @@ print(tensorflow.__version__)
 
 from tensorflow.contrib.data import prefetch_to_device, shuffle_and_repeat, map_and_batch
 from data_pipeline import build_input_pipeline
+from power_spectra import batch_power_spectrum
 import numpy as np
 import PIL.Image
 from tqdm import tqdm
@@ -57,6 +58,7 @@ class StyleGAN(object):
     """
 
     self.store_images_flag = False
+    self.power_spectra_loss = args.power_spectra_loss
     self.style_mixing_flag = args.style_mixing_flag
     self.divergence_lambda = 0.00
     self.divergence_loss_flag = False
@@ -334,6 +336,9 @@ class StyleGAN(object):
       self.g_loss_per_res = {}
       self.r1_penalty = {}
 
+      if self.power_spectra_loss:
+        self.ps_loss_per_res = {}
+
       self.generator_optim = {}
       self.discriminator_optim = {}
 
@@ -350,6 +355,9 @@ class StyleGAN(object):
         g_loss_per_gpu = []
         d_loss_per_gpu = []
         r1_penalty_list = []
+
+        if self.power_spectra_loss:
+          ps_loss_per_gpu = []
 
         batch_size = self.batch_sizes.get(res, self.batch_size_base)
         global_step = tf.get_variable('global_step_{}'.format(res), shape=[], dtype=tf.float32,
@@ -403,6 +411,20 @@ class StyleGAN(object):
                 g_loss_per_gpu.append(g_loss)
                 r1_penalty_list.append(r1_penalty)
 
+                if self.power_spectra_loss:
+                  ps_real = batch_power_spectrum(real_img)
+                  ps_fake = batch_power_spectrum(fake_img)
+
+                if self.power_spectra_loss:
+                  ps_real_mean = tf.math.reduce_mean(ps_real, axis=0)
+                  ps_real_std = tf.math.reduce_std(ps_real, axis=0)
+                  ps_fake_mean = tf.math.reduce_mean(ps_fake, axis=0)
+
+                  ps_loss = tf.reduce_mean(tf.math.square((ps_fake_mean - ps_real_mean)/ps_real_std))
+                  ps_loss_per_gpu.append(ps_loss)
+
+                  g_loss += ps_loss
+                
         if(self.divergence_loss_flag):
           self.divergence_fake[res], self.divergence_real[res] = calculate_divergence_tf( tf.concat(fake_images_per_gpu, axis=0)[-batch_size * self.gpu_num:], tf.concat(real_images_per_gpu, axis=0)[-batch_size * self.gpu_num:])
 
@@ -421,6 +443,9 @@ class StyleGAN(object):
           g_loss += self.divergence_lambda * self.divergence_fake[res]
 
         self.r1_penalty[res] = tf.reduce_mean(r1_penalty_list)
+
+        if self.power_spectra_loss:
+          self.ps_loss_per_res[res] = tf.reduce_mean(ps_loss_per_gpu)
 
         d_lr = self.d_learning_rates.get(res, self.learning_rate_base)
         g_lr = self.g_learning_rates.get(res, self.learning_rate_base)
@@ -545,8 +570,13 @@ class StyleGAN(object):
                                        self.g_summary_per_res[current_res],
                                        self.alpha_summary_per_res[current_res],
                                        self.g_loss_per_res[current_res]])
-
-        r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res] ])
+        if self.power_spectra_loss:
+          r1_loss, alpha, ps_loss = self.sess.run([self.r1_penalty[current_res],
+                                                   self.alpha_stored_per_res[current_res],
+                                                   self.ps_loss_per_res[current_res]])
+        else:
+          r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],
+                                          self.alpha_stored_per_res[current_res]])
 
         self.writer.add_summary(summary_g_per_res, idx)
         self.writer.add_summary(summary_alpha, idx)
@@ -559,6 +589,9 @@ class StyleGAN(object):
         self.experiment.log_metric("g_loss",g_loss,step=counter)
         self.experiment.log_metric("r1_penalty", r1_loss,step=counter)
         self.experiment.log_metric("alpha value ", alpha, step=counter)
+
+        if self.power_spectra_loss:
+          self.experiment.log_metric("ps_loss", ps_loss, step=counter)
 
         print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  " \
             % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))

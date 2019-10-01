@@ -56,6 +56,8 @@ def parse_args():
   parser.add_argument('--divergence_loss_flag', type=bool, default= False,
             help='should there be added term to the g_loss from divergence , default is false')
 
+  parser.add_argument('--power_spectra_loss', type=bool, default= False,
+            help='whether to add a power loss term to the generator loss, default is false')
 
   parser.add_argument('--style_mixing_flag', type=bool, default= False,
             help='should there be style mixing of two latents from g_mapping network , default is false')
