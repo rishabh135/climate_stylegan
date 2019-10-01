@@ -5,6 +5,7 @@ import tensorflow
 print(tensorflow.__version__)
 
 from tensorflow.contrib.data import prefetch_to_device, shuffle_and_repeat, map_and_batch
+from data_pipeline import build_input_pipeline
 import numpy as np
 import PIL.Image
 from tqdm import tqdm
@@ -378,25 +379,7 @@ class StyleGAN(object):
                 image_class = ImageData(res)
 
                 if(self.climate_data):
-                  """
-                  npy_file is just to calculate the common header across all the files, in self.dataset
-                  self.dataset = list of chosen files
-                  num_features = constant , the dimension of each sample from the index file
-                  """
-
-                  npy_file = self.dataset[0]
-                  num_features = self.input_channels * self.climate_img_size * self.climate_img_size
-                  dtype = tf.float32
-                  header_offset = npy_header_offset(npy_file)
-                  dataset = tf.data.FixedLengthRecordDataset(self.dataset, num_features * dtype.size, header_bytes=header_offset)
-                  dataset = dataset.map(lambda s: tf.image.resize( tf.transpose(tf.reshape(tf.decode_raw(s, dtype), [self.input_channels,self.climate_img_size, self.climate_img_size]) , perm=[1,2,0]), size=[res, res], method=tf.image.ResizeMethod.BILINEAR), num_parallel_calls=4)
-
-                  inputs = dataset.apply(shuffle_and_repeat(self.dataset_num)).batch(batch_size, drop_remainder=True).apply(prefetch_to_device(gpu_device, None))
-
-                  inputs_iterator = inputs.make_one_shot_iterator()
-                  real_img  = inputs_iterator.get_next()
-                  real_img  = tf.reshape( real_img ,(batch_size, res , res, self.input_channels))
-
+                  real_img  = build_input_pipeline(self.dataset, res, batch_size, gpu_device)
                 else:
                   inputs = tf.data.Dataset.from_tensor_slices(self.dataset)
                   # applying operations to input slices
