@@ -10,12 +10,6 @@ from comet_ml import Experiment
 import argparse
 from utils import *
 
-
-
-# Add the following code anywhere in your machine learning file
-# experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa",
-# 						project_name="on-celeba", workspace="style-gan")
-
 import time, re, sys
 from ops import *
 from utils import *
@@ -35,7 +29,7 @@ class StyleGAN(object):
 		self.phase = args.phase
 		self.progressive = args.progressive
 
-		self.model_name = "Climate StyleGAN"
+		self.model_name = "Climate-StyleGAN"
 		self.sess = sess
 		self.dataset_name = args.dataset
 		self.checkpoint_dir = args.checkpoint_dir
@@ -440,7 +434,6 @@ class StyleGAN(object):
 
 
 
-		# "../stored_outputs/one_seventh_divergence/checkpoint/StyleGAN_rbc_3500_8to256_progressive/StyleGAN.model-315468"
 
 		try:
 			self.saver.restore(self.sess, load_model_path)
@@ -487,33 +480,6 @@ class StyleGAN(object):
 			print(" [!] Load failed...")
 
 		image_frame_dim = int(np.floor(np.sqrt(self.batch_size)))
-
-
-
-
-
-		# tf_dict_multi_gpu = multi_gpu(num_gpus)
-		# tf.global_variables_initializer().run()
-		# batches = create_input_batches(num_gpus)
-		# multi_gpu_inputs = create_multi_gpu_batches(batches, num_gpus)
-		
-		# for input_batch in multi_gpu_inputs:
-		# 	input_feed_dict = {}
-		# 	output_multi_gpus = []
-		# 	for idx in range(len(tf_dict_multi_gpu)):
-		# 		output_multi_gpus.append(tf_dict_multi_gpu[idx]['out'])
-
-
-
-
-
-
-
-
-
-
-
-
 		generated_image = []
 		saved_seeds = []
 
@@ -549,28 +515,6 @@ class StyleGAN(object):
 
 		np.save( save_file_path, Data)
 		print("Operation completed with save file path = {} ".format(save_file_path))
-
-"""
-
-load_path = os.path.join(dataset_location + "tke_average_energies.npy")
-my_dict_back = np.load(load_path, allow_pickle=True)
-
-
-
-ux_average_over_time = my_dict_back.item()["{}_ux".format(image_size)]
-uy_average_over_time = my_dict_back.item()["{}_uy".format(image_size)]
-
-
-
-"""
-
-
-# def multi_gpu_model_parallelism(gan, num_gpus=2):
-# 	tf_dict = []
-# 	for i in range(num_gpus):
-# 		with tf.device('/gpu:{}'.format(i)):
-# 			tf_dict.append(gan.build_graph)
-
 
 
 
@@ -632,7 +576,7 @@ def parse_args():
 
 
 
-	parser.add_argument('--counter_number', type=int, default= 87615,
+	parser.add_argument('--counter_number', type=int, default= 0,
 						help='number of the model to be loaded (0 makes it load the latest model)')
 
 
@@ -641,6 +585,27 @@ def parse_args():
 
 """checking arguments"""
 def check_args(args):
+	tf.global_variables_initializer().run()
+		self.saver = tf.train.Saver()
+		could_load, checkpoint_counter = self.load(self.checkpoint_dir, self.encoder_counter_number)
+
+
+		fig, axs = plt.subplots( len(noise_variations), len(src_seeds), figsize=(8,20))
+		idx = 0
+
+
+		total_seeds = [ np.random.randint(low=0, high=10000) for i in range(10)]
+		src_seeds = total_seeds[:2]
+
+		resolutions = resolution_list(self.img_size)
+		featuremaps = featuremap_list(self.img_size)
+		n_broadcast = len(resolutions) * 2
+
+		alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
+
+		if self.seed :
+			src_latents = tf.cast(np.concatenate(list(np.random.RandomState(seed).normal(size=[1, self.z_dim]) for seed in src_seeds), axis=0), tf.float32)
+
 
 	# import comet_ml in the top of your file
 

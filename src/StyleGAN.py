@@ -22,7 +22,7 @@ from tensorflow.contrib.data import prefetch_to_device, shuffle_and_repeat, map_
 import numpy as np
 import PIL.Image
 from tqdm import tqdm
-
+from data_pipeline import build_input_pipeline
 from RAdam import RAdamOptimizer
 
 
@@ -412,14 +412,6 @@ class StyleGAN(object):
 			self.g_summary_per_res = {}
 
 			self.alpha_stored_per_res = {}
-			
-
-			# self.real_images = {}
-			# if(self.store_images_flag):
-			# 	self.fake_images = {}
-			# 	self.real_images = {}
-
-
 			self.divergence_fake = {}
 			self.divergence_real = {}
 
@@ -430,9 +422,6 @@ class StyleGAN(object):
 
 				r1_penalty_list = []
 
-				# fake_images_per_gpu = []
-				# real_images_per_gpu = []
-				
 
 
 				batch_size = self.batch_sizes.get(res, self.batch_size_base)
@@ -464,56 +453,9 @@ class StyleGAN(object):
 
 
 								if(self.climate_data):
-									"""
-									npy_file is just to calculate the common header across all the files, in self.dataset 
-									self.dataset = list of chosen files
-									num_features = constant , the dimension of each sample from the index file
-									"""
 									
-									npy_file = self.dataset[0]
-									num_features = self.input_channels * self.climate_img_size * self.climate_img_size
-									dtype = tf.float32
-									header_offset = npy_header_offset(npy_file)
-									dataset = tf.data.FixedLengthRecordDataset(self.dataset, num_features * dtype.size, header_bytes=header_offset)
-									dataset = dataset.map(lambda s: tf.image.resize( tf.transpose(tf.reshape(tf.decode_raw(s, dtype), [self.input_channels,self.climate_img_size, self.climate_img_size]) , perm=[1,2,0]), size=[res, res], method=tf.image.ResizeMethod.BILINEAR), num_parallel_calls=4)
- 
+									real_img  = build_input_pipeline(self.dataset, res, batch_size, gpu_device)
 
-
-
-
-									# # rbc_class = RBCData(res, self.input_channels)
-									# train_dataset = tf.data.Dataset.from_tensor_slices(self.dataset)	
-									
-
-
-									# inputs = train_dataset.apply(map_and_batch(rbc_class.image_processing, batch_size, num_parallel_batches=16, drop_remainder=True)). \
-									# 	apply(prefetch_to_device(gpu_device, None))
-									
-
-
-									# inputs = train_dataset.map(lambda item: tf.py_func(read_npy_file, [item, res], [tf.float32, ]))
-						
-									inputs = dataset.apply(shuffle_and_repeat(self.dataset_num)).batch(batch_size, drop_remainder=True).apply(prefetch_to_device(gpu_device, None))
-
-									# prefetch(buffer_size= tf.data.experimental.AUTOTUNE)
-									
-									inputs_iterator = inputs.make_one_shot_iterator()
-									real_img  = inputs_iterator.get_next()
-									real_img  = tf.reshape( real_img ,(batch_size, res , res, self.input_channels))
-									# print("real img: ",type(real_img))									
-									# print("real_img.shape: ",real_img.shape)
-									# real_img.set_shape([None, self.img_size, None, self.input_channels])
-									
-	
-
-									# inputs = tf.data.Dataset.from_tensor_slices(self.dataset)
-									# ######################################################################################
-									# # applying operations to input slices 
-									# inputs = inputs. \
-									# 	apply(shuffle_and_repeat(self.dataset_num)). \
-									# 	apply(map_and_batch(image_class.image_processing, batch_size, num_parallel_batches=16, drop_remainder=True)). \
-									# 	apply(prefetch_to_device(gpu_device, None))
-									# When using dataset.prefetch, use buffer_size=None to let it detect optimal buffer size
 
 								else:
 
@@ -528,49 +470,23 @@ class StyleGAN(object):
 									# When using dataset.prefetch, use buffer_size=None to let it detect optimal buffer size
 									inputs_iterator = inputs.make_one_shot_iterator()
 									real_img = inputs_iterator.get_next()
-									# print("real img: ",type(real_img))									
-									# print("real_img.shape: ",real_img.shape)
+
 
 
 								z = tf.random_normal(shape=[batch_size, self.z_dim])
-
-								
-
 								fake_img = self.generator(z, alpha, res)
-								# print("fake_img: ",fake_img.shape)
-								
-
-								# if(not self.climate_data):
 								real_img = smooth_crossfade(real_img, alpha)
-
-
-								# print("real_img: ",real_img.shape)
-
 								real_logit = self.discriminator(real_img, alpha, res)
 
 
 
 
-								# print("#########################\n\n\n\n")
-								# print("starting fake logits now")
 								fake_logit = self.discriminator(fake_img, alpha, res)
-								# print("****** fake_logit shape {} ".format(fake_logit.shape))
-								# compute loss
 								d_loss, g_loss, r1_penalty = compute_loss(real_img, real_logit, fake_logit)
-
 								d_loss_per_gpu.append(d_loss)
 								g_loss_per_gpu.append(g_loss)
-								# print(" g_loss : {} and r1 pentalty : {} ".format(g_loss.shape, r1_penalty.shape))
-
-
-								# print("\n\n\n")
 								r1_penalty_list.append(r1_penalty)
 								
-								# fake_images_per_gpu.append(fake_img)
-								# real_images_per_gpu.append(real_img)
-
-				# print("Create graph for {} resolution".format(res))
-
 
 				if(self.divergence_loss_flag):
 					self.divergence_fake[res], self.divergence_real[res] = calculate_divergence_tf( tf.concat(fake_images_per_gpu, axis=0)[-batch_size * self.gpu_num:], tf.concat(real_images_per_gpu, axis=0)[-batch_size * self.gpu_num:])
@@ -603,28 +519,12 @@ class StyleGAN(object):
 
 
 
-				# d_optim = RAdamOptimizer(learning_rate=0.001, beta1=0.9, beta2=0.999, weight_decay=0.0)\
-				# 			.minimize(d_loss,var_list=d_vars,colocate_gradients_with_ops=colocate_grad)
-
-
 
 
 				d_optim = tf.train.AdamOptimizer(d_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(d_loss,var_list=d_vars,colocate_gradients_with_ops=colocate_grad)
 
-				# g_optim = RAdamOptimizer(learning_rate= 0.001, beta1=0.9, beta2=0.999, weight_decay=0.0)\
-				# 	.minimize(g_loss, var_list=g_vars, global_step=global_step, colocate_gradients_with_ops=colocate_grad)
-				
-
 
 				g_optim = tf.train.AdamOptimizer(g_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(g_loss,var_list=g_vars,global_step=global_step,colocate_gradients_with_ops=colocate_grad)
-
-				"""
-					trying cyclical annealed learning rate 
-
-				"""
-
-				# g_optim = tf.train.AdamOptimizer( learning_rate=clr.cyclic_learning_rate(global_step=global_step, learning_rate = g_lr, mode='triangular2') \
-				# , beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(g_loss,var_list=g_vars,global_step=global_step,colocate_gradients_with_ops=colocate_grad)
 
 
 
@@ -638,16 +538,6 @@ class StyleGAN(object):
 				if(self.store_images_flag):
 					self.fake_images[res] = tf.concat(fake_images_per_gpu, axis=0)
 					
-
-				# self.real_images[res] = tf.concat(real_images_per_gpu, axis=0)
-
-
-
-
-
-
-
-
 
 				self.alpha_stored_per_res[res] = alpha
 
@@ -685,7 +575,7 @@ class StyleGAN(object):
 
 
 
-		# restore check-point if it exits
+		# restore check-point if it exits , you can optionally give an argument to force load a checkpoint from a certain point
 		could_load, checkpoint_counter = self.load(self.checkpoint_dir)
 		
 		print("checkpoint_counter: ", checkpoint_counter)
@@ -725,7 +615,7 @@ class StyleGAN(object):
 
 
 			counter = checkpoint_counter
-			print(" [*] Load SUCCESS")
+			print(" [*] Load SUCCESS Training from iteration : {}".format(checkpoint_counter))
 
 		else:
 			start_res_idx = self.resolutions.index(self.start_res)
@@ -740,11 +630,6 @@ class StyleGAN(object):
 
 
 		for current_res_num in range(start_res_idx, len(self.resolutions)):
-
-
-
-			# self.generated_images_stored = []
-			# self.real_images_stored = []
 
 			current_res = self.resolutions[current_res_num]
 			batch_size_per_res = self.batch_sizes.get(current_res, self.batch_size_base) * self.gpu_num
@@ -780,8 +665,6 @@ class StyleGAN(object):
 
 				r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res] ])
 
-				# divergence_fake, divergence_real, alpha = self.sess.run([self.r1_penalty[current_res], self.divergence_fake[current_res], self.divergence_real[current_res], self.alpha_stored_per_res[current_res] ])
-
 				self.writer.add_summary(summary_g_per_res, idx)
 				self.writer.add_summary(summary_alpha, idx)
 
@@ -792,166 +675,24 @@ class StyleGAN(object):
 				self.experiment.log_metric("d_loss",d_loss,step=counter)
 				self.experiment.log_metric("g_loss",g_loss,step=counter)
 				self.experiment.log_metric("r1_penalty", r1_loss,step=counter)
-				# self.experiment.log_metric("divergence_real", divergence_real, step=counter)
-				# self.experiment.log_metric("divergence_fake", divergence_fake, step=counter)
 				self.experiment.log_metric("alpha value ", alpha, step=counter)
 
 
 
-				
-				print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  " \
-					  % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))
-
-
-
-				# real_samples = self.sess.run(self.real_images[current_res])
-				# self.real_images_stored.append(real_samples)
-
-				# if ( np.mod(idx + 1, self.print_freq[current_res]) == 0):
-
-				# 	tmp_real_images = np.concatenate(self.real_images_stored, axis=0)
-				# 	images_to_be_saved = min(1000, tmp_real_images.shape[0])
-				# 	np.save( "{}/real_images_{}_at_index_{}.npy".format(self.result_dir, current_res, idx), tmp_real_images[-images_to_be_saved:, :,:,:])
-
+				if (np.mod(idx + 1, 100) == 0):
+					print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  " \
+						% (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))
 
 				"""
 
 				function to save iteration or not
 
 				"""
+				if np.mod(idx + 1, self.save_freq[current_res]) == 0:
+					self.save(self.checkpoint_dir, counter)
+					print("saving file at checkpoint dir {} and counter {} ".format(self.checkpoint_dir, counter))
 
-
-
-
-
-				"""
-
-				function to plot images and their divergence plots
-
-				"""
-
-
-				if ((np.mod(idx + 1, self.print_freq[current_res]) == 0) and self.store_images_flag):
-
-
-					# samples = self.sess.run(self.fake_images[current_res])
-
-					"""
-						Also plotting real samples for transparency purposes
-					"""
-					
-					real_samples = self.sess.run(self.real_images[current_res])
-
-					tmp_real_images = np.concatenate(self.real_images_stored, axis=0)
-
-					# fake_values, real_values = self.sess.run(self.divergence_fake[res], self.divergence_real[res]) 
-
-
-					manifold_h = int(np.floor(np.sqrt(batch_size_per_res)))
-					manifold_w = int(np.floor(np.sqrt(batch_size_per_res)))
-
-
-					if(self.climate_data):
-
-						"""
 		
-						### To DO a non hacky way to add subarrays continuously 
-
-						"""
-						# self.generated_images_stored.append(samples)
-						# self.real_images_stored.append(real_samples)
-						
-						# try:
-						# 	self.ux_images_stored.concatenate( axis=0)
-						# except:
-						# 	self.ux_images_stored = samples[:manifold_h * manifold_w, :, :, 0]
-						
-
-						# try:	
-						# 	np.concatenate(self.uy_images_stored, samples[:manifold_h * manifold_w, :, :, 1], axis=0)
-						# except:
-						# 	self.uy_images_stored = samples[:manifold_h * manifold_w, :, :, 1]
-							
-
-
-
-
-
-						
-						# self.experiment.log_metric("summary alpha", summary_alpha,step=counter)
-						
-
-						# try:
-						# 	self.real_samples.concatenate(, axis=0)
-						# except:
-						# 	self.real_samples = real_samples
-
-
-						# print("Current res: real images.shape : {} , generated shape : {}  ".format( self.real_images_stored.shape[0], self.generated_images_stored.shape[0] ))
-							
-						"""
-						it now starts to check if the number of stored images is atleast > self.plotting_hitogram_images (which by default is 64)
-
-
-						"""
-						if(len(self.real_images_stored)* self.real_images_stored[0].shape[0] >= self.plotting_histogram_images):
-
-
-							# print("^^^^^^^^^^^^^ it entered the plotting function correctly \n\n\n")
-							tmp_real_images = np.concatenate(self.real_images_stored, axis=0)
-
-							tmp_fake_images = np.concatenate(self.generated_images_stored, axis=0)
-
-
-						
-							
-							plot_velocity_hist(tmp_fake_images[-self.plotting_histogram_images:, :,:,0], tmp_fake_images[-self.plotting_histogram_images:, :, :, 1] , "./{}/fake_img_histogram_{:04d}_{:06d}.jpg".format(self.sample_dir, current_res, idx + 1), self.experiment, tmp_real_images[-self.plotting_histogram_images:,:,:,:])
-
-
-							plot_generated_velocity(tmp_fake_images[-self.plotting_histogram_images:, :,:,0], tmp_fake_images[-self.plotting_histogram_images:, :, :, 1] , "./{}/real_and_fake_img_{:04d}_{:06d}.jpg".format(self.sample_dir, current_res, idx + 1), self.experiment, tmp_real_images[-self.plotting_histogram_images:, :, :, :])
-
-
-							if np.mod(idx + 1, 50 * self.print_freq[current_res]) == 0:
-
-								images_to_be_saved = min(5000, tmp_fake_images.shape[0])
-
-								np.save( "./{}/generated_images_{}_at_index_{}.npy".format(self.result_dir, current_res, idx), 								tmp_fake_images[-images_to_be_saved:, :,:,:])
-								np.save( "./{}/real_images_{}_at_index_{}.npy".format(self.result_dir, current_res, idx), tmp_real_images[-images_to_be_saved:, :,:,:])
-
-							# if(current_res == 256):
-							# 	try:
-							# 		plot_tke(tmp_fake_images[-self.plotting_histogram_images:, :,:,0], tmp_fake_images[-self.plotting_histogram_images:, :, :, 1] , "./{}/tke_sp1d_{:04d}_{:06d}.jpg".format(self.sample_dir, current_res, idx + 1), self.experiment, tmp_real_images[-self.plotting_histogram_images:, :, :, :])
-
-							# 	except:
-							# 		continue
-
-
-
-				# if np.mod(idx + 1, 2*self.print_freq[current_res]) == 0:
-
-
-				# 	fake_values, real_values = self.sess.run([self.divergence_fake[current_res], self.divergence_real[current_res]])
-
-				# 	fig=plt.figure()
-				# 	plt.hist([fake_values.flatten(), real_values.flatten() ], bins='fd', histtype='step', density=True, color=["green","red"])	
-
-				# 	self.experiment.log_figure(figure=plt,  figure_name=" divergence plots at index {} res {} ".format(idx, current_res ))
-
-
-
-							# calculate_divergence(tmp_fake_images[-self.plotting_histogram_images:, :, :, :] , "./{}/real_and_fake_img_{:04d}_{:06d}.jpg".format(self.sample_dir, current_res, idx + 1), self.experiment, tmp_real_images[-self.plotting_histogram_images:, :, :, :])
-					
-						# exp_figure = imsave(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],  './{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.climate_data, current_res, self.dataset_location, self.experiment, self.num_images_to_be_shown, real_samples[:, :, :, :] )
-					
-						# self.experiment.log_figure(figure=exp_figure,  figure_name="fake images at {} at index {}".format(current_res, idx+1))
-
-
-					# else:		
-					# 	self.experiment.log_image( (samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w], current_res ), name="fake images generated during training")
-					# 	save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
-					# 				'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.climate_data)
-
-
 
 			# After an epoch, start_batch_idx is set to zero
 			# non-zero value is only for the first epoch after loading pre-trained model
@@ -993,92 +734,93 @@ class StyleGAN(object):
 
 		self.saver.save(self.sess, os.path.join(checkpoint_dir, self.model_name + '.model'), global_step=step)
 
-	def load(self, checkpoint_dir):
-		print(" [*] Reading checkpoints...")
-		checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
 
-		ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-		if ckpt and ckpt.model_checkpoint_path:
-			ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
-			self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
-			counter = int(ckpt_name.split('-')[-1])
-			print(" [*] Success to read {}".format(ckpt_name))
-			return True, counter
+
+
+	def load(self, checkpoint_dir, counter=-1):
+		
+		# checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
+		
+		print(" [*] Reading checkpoints from  {} with counter {} ".format(checkpoint_dir, counter))
+		if(counter == 0):
+				states = tf.train.get_checkpoint_state(checkpoint_dir)
+				checkpoint_paths = states.all_model_checkpoint_paths
+				load_model_path = checkpoint_paths[-1]
+
 		else:
+			load_model_path =  os.path.join(checkpoint_dir, self.model_dir)
+			# load_model_path =  os.path.join(checkpoint_dir, "Climate-StyleGAN.model-{}".format(counter))
+
+
+		try:
+			self.saver.restore(self.sess, load_model_path)
+			print(" [*] Success to read {}".format(load_model_path))
+			# counter = int(load_model_path.split('-')[-1])
+			return True, counter
+		
+		except:
 			print(" [*] Failed to find a checkpoint")
-			return False, 0
-
-
-	# def load(self, checkpoint_dir, counter):
-		
-	# 	# checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
-		
-	# 	print(" [*] Reading checkpoints from  {} with counter {} ".format(checkpoint_dir, counter))
-	# 	if(counter == 0):
-	# 			states = tf.train.get_checkpoint_state(checkpoint_dir)
-	# 			checkpoint_paths = states.all_model_checkpoint_paths
-	# 			load_model_path = checkpoint_paths[-1]
-
-	# 	else:
-	# 		load_model_path =  os.path.join(checkpoint_dir, "Climate StyleGAN.model-{}".format(counter))
+			return False, -1
 
 
 
-	# 	try:
-	# 		self.saver.restore(self.sess, load_model_path)
-	# 		print(" [*] Success to read {}".format(load_model_path))
-	# 		# counter = int(load_model_path.split('-')[-1])
-	# 		return True, counter
-		
-	# 	except:
-	# 		print(" [*] Failed to find a checkpoint")
-	# 		return False, -1
+	def test(self, counter):
 
-
-	def test(self):
+		print("Entered test phase successfully")
 		tf.global_variables_initializer().run()
 
+		print("intitialized tensorflow variable")
+
 		self.saver = tf.train.Saver()
-		could_load, checkpoint_counter = self.load(self.checkpoint_dir, self.counter_number)
-		result_dir = os.path.join(self.result_dir, self.model_dir)
+		
+		# could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+		
+		could_load, checkpoint_counter = self.load(self.checkpoint_dir, counter)
+
+		result_dir = os.path.join(self.result_dir, "single_generator_results/")
 		check_folder(result_dir)
 
 		if could_load:
-			print(" [*] Load SUCCESS")
+			print(" [*] Load SUCCESS with checkpoint counter {}".format(checkpoint_counter))
 		else:
 			print(" [!] Load failed...")
 
 		image_frame_dim = int(np.floor(np.sqrt(self.batch_size)))
+		generated_image = []
+		saved_seeds = []
 
+		Data = {}
 		for i in tqdm(range(self.test_num)):
 
-			if self.batch_size == 1:
-				seed = np.random.randint(low=0, high=10000)
-				test_z = tf.cast(np.random.RandomState(seed).normal(size=[self.batch_size, self.z_dim]), tf.float32)
-				alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
-				self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
-				samples = self.sess.run(self.fake_images)
-
-				visualize_each_image_test( samples[:image_frame_dim * image_frame_dim, :, :, :], [ image_frame_dim,  image_frame_dim],  './{}/fake_img_{:04d}_{:06d}.jpg'.format(result_dir, self.img_size, i),  self.experiment, self.dataset_location,  num_images_to_be_shown=4)	
-
-			else :
-				samples = self.sess.run(self.fake_images)
+			# if self.batch_size == 1:
 
 
-				if(self.climate_data):
+			seed = np.random.randint(low=0, high=10000)
+			test_z = tf.cast(np.random.RandomState(seed).normal(size=[self.batch_size, self.z_dim]), tf.float32)
+			alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
+			self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
+			samples = self.sess.run(self.fake_images)
+			generated_image.append(samples)
+			saved_seeds.append(seed)
 
+		generated_images = np.concatenate( generated_image, axis=0 )
+		seeds = np.asarray(saved_seeds)
+		
+		Data["generated_images"] = generated_images
+		Data["seeds"] = seeds
 
+				
+		# if not os.path.exists(result_dir):
+		# 	os.makedirs(result_dir)
+		
+		trial = 0
+		save_file_path = str(result_dir) + "generator_{}_images_{}_file_{}.npy".format(checkpoint_counter, self.test_num, trial)
+		while(os.path.isfile(save_file_path)):
+			trial += 1
+			save_file_path = str(result_dir) + "generator_{}_images_{}_file_{}.npy".format(checkpoint_counter, self.test_num, trial )
 
-					visualize_each_image_test( samples[:image_frame_dim * image_frame_dim, :, :, :], [ image_frame_dim,  image_frame_dim],  './{}/fake_img_{:04d}_{:06d}.jpg'.format(result_dir, self.img_size, i),  self.experiment, self.dataset_location,  num_images_to_be_shown=4)				
-					
-
-					# else:		
-					# 	self.experiment.log_image( (samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w], current_res ), name="fake images generated during training")
-					# 	save_images(samples[:manifold_h * manifold_w, :, :, :], [manifold_h, manifold_w],
-					# 				'./{}/fake_img_{:04d}_{:06d}.jpg'.format(self.sample_dir, current_res, idx + 1), self.climate_data)
-
-				# save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
-				# 			'{}/test_fake_img_{}_{}.jpg'.format(result_dir, self.img_size, i))
+		np.save( save_file_path, Data)
+		print("Operation completed with save file path = {} ".format(save_file_path))
 
 	def draw_uncurated_result_figure(self):
 

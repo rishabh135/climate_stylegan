@@ -25,6 +25,6 @@ python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --datas
 	--checkpoint_dir ./stored_outputs/wo_norm_512/checkpoint --result_dir ./stored_outputs/wo_norm_512/result \
 	--log_dir ./stored_outputs/wo_norm_512/log --sample_dir ./stored_outputs/wo_norm_512/sample \
 	--dataset_location /global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_original/ \
-	--name_experiment "without_normalization_climate data at 512"
+	--name_experiment " wo_norm_climate data at 512 new_ver"
  
 

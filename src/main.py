@@ -77,7 +77,7 @@ def check_args(args):
 	# import comet_ml in the top of your file
 
 	experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa",
-								project_name="{}".format("climate-data"), workspace="style-gan")
+								project_name="{}".format("climate-training-r"), workspace="style-gan")
 
 
 
