@@ -477,19 +477,16 @@ class StyleGAN(object):
 								fake_img = self.generator(z, alpha, res)
 								real_img = smooth_crossfade(real_img, alpha)
 								real_logit = self.discriminator(real_img, alpha, res)
-
-
-
-
 								fake_logit = self.discriminator(fake_img, alpha, res)
+
+
 								d_loss, g_loss, r1_penalty = compute_loss(real_img, real_logit, fake_logit)
 								d_loss_per_gpu.append(d_loss)
 								g_loss_per_gpu.append(g_loss)
 								r1_penalty_list.append(r1_penalty)
 								
 
-				if(self.divergence_loss_flag):
-					self.divergence_fake[res], self.divergence_real[res] = calculate_divergence_tf( tf.concat(fake_images_per_gpu, axis=0)[-batch_size * self.gpu_num:], tf.concat(real_images_per_gpu, axis=0)[-batch_size * self.gpu_num:])
+
 
 				# prepare appropriate training vars
 				d_vars, g_vars = filter_trainable_variables(res)
@@ -497,13 +494,6 @@ class StyleGAN(object):
 				d_loss = tf.reduce_mean(d_loss_per_gpu)
 				g_loss = tf.reduce_mean(g_loss_per_gpu)
 
-				"""
-				adding divergence as an added loss to the generator
-
-				"""
-
-				if(self.divergence_loss_flag):
-					g_loss += self.divergence_lambda * self.divergence_fake[res]
 
 				self.r1_penalty[res] = tf.reduce_mean(r1_penalty_list)
 
@@ -514,11 +504,6 @@ class StyleGAN(object):
 					colocate_grad = False
 				else :
 					colocate_grad = True
-
-				
-
-
-
 
 
 				d_optim = tf.train.AdamOptimizer(d_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(d_loss,var_list=d_vars,colocate_gradients_with_ops=colocate_grad)
@@ -572,13 +557,9 @@ class StyleGAN(object):
 		self.writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir, self.sess.graph)
 
 
-
-
-
-		# restore check-point if it exits , you can optionally give an argument to force load a checkpoint from a certain point
+		# restore check-point if it exits (otherwise makes a checkpoint and starts training from scratch), you can optionally give an argument to force load a checkpoint from a certain point
 		could_load, checkpoint_counter = self.load(self.checkpoint_dir)
 		
-		print("checkpoint_counter: ", checkpoint_counter)
 
 		if could_load:
 
@@ -688,9 +669,9 @@ class StyleGAN(object):
 				function to save iteration or not
 
 				"""
-				if np.mod(idx + 1, self.save_freq[current_res]) == 0:
+				if (np.mod(idx + 1, self.save_freq[current_res]) == 0):
 					self.save(self.checkpoint_dir, counter)
-					print("saving file at checkpoint dir {} and counter {} ".format(self.checkpoint_dir, counter))
+					print("[SAVING] chekpoint_dir {} and counter {} ".format(self.checkpoint_dir, counter))
 
 		
 
@@ -737,30 +718,32 @@ class StyleGAN(object):
 
 
 
-	def load(self, checkpoint_dir, counter=-1):
-		
-		# checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
-		
-		print(" [*] Reading checkpoints from  {} with counter {} ".format(checkpoint_dir, counter))
+	def load(self, checkpoint_dir, counter=0):
+	
+		print(" [*] Reading checkpoints from {} with counter {} ".format(checkpoint_dir, counter))
+
+		states = tf.train.get_checkpoint_state(checkpoint_dir)
 		if(counter == 0):
-				states = tf.train.get_checkpoint_state(checkpoint_dir)
+
+			if (states and states.model_checkpoint_path):
 				checkpoint_paths = states.all_model_checkpoint_paths
 				load_model_path = checkpoint_paths[-1]
+				self.saver.restore(self.sess, load_model_path)
+				counter = int(load_model_path.split('-')[-1])
+				print(" [*] Success to read {} with counter {} ".format(load_model_path, counter))
+				return True, counter
+
+			else:
+				print(" [*] Failed to find a checkpoint")
+				return False, -1
+
 
 		else:
 			load_model_path =  os.path.join(checkpoint_dir, self.model_dir)
-			# load_model_path =  os.path.join(checkpoint_dir, "Climate-StyleGAN.model-{}".format(counter))
-
-
-		try:
 			self.saver.restore(self.sess, load_model_path)
 			print(" [*] Success to read {}".format(load_model_path))
-			# counter = int(load_model_path.split('-')[-1])
 			return True, counter
-		
-		except:
-			print(" [*] Failed to find a checkpoint")
-			return False, -1
+
 
 
 
@@ -810,8 +793,7 @@ class StyleGAN(object):
 		Data["seeds"] = seeds
 
 				
-		# if not os.path.exists(result_dir):
-		# 	os.makedirs(result_dir)
+
 		
 		trial = 0
 		save_file_path = str(result_dir) + "generator_{}_images_{}_file_{}.npy".format(checkpoint_counter, self.test_num, trial)

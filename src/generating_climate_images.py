@@ -446,15 +446,7 @@ class StyleGAN(object):
 			print(" [*] Failed to find a checkpoint")
 			return False, -1
 
-		# # ckpt = tf.train.checkpoint(checkpoint_dir, latest_filename= "StyleGAN.model-"+ str(counter) + ".data-00000-of-00001")
 
-		# # ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-
-		# if ckpt and ckpt.model_checkpoint_path:
-
-		# 	ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
-		# 	self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
-		# 	counter = int(ckpt_name.split('-')[-1])
 		
 	
 
@@ -585,29 +577,6 @@ def parse_args():
 
 """checking arguments"""
 def check_args(args):
-	tf.global_variables_initializer().run()
-		self.saver = tf.train.Saver()
-		could_load, checkpoint_counter = self.load(self.checkpoint_dir, self.encoder_counter_number)
-
-
-		fig, axs = plt.subplots( len(noise_variations), len(src_seeds), figsize=(8,20))
-		idx = 0
-
-
-		total_seeds = [ np.random.randint(low=0, high=10000) for i in range(10)]
-		src_seeds = total_seeds[:2]
-
-		resolutions = resolution_list(self.img_size)
-		featuremaps = featuremap_list(self.img_size)
-		n_broadcast = len(resolutions) * 2
-
-		alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
-
-		if self.seed :
-			src_latents = tf.cast(np.concatenate(list(np.random.RandomState(seed).normal(size=[1, self.z_dim]) for seed in src_seeds), axis=0), tf.float32)
-
-
-	# import comet_ml in the top of your file
 
 	experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa",
 								project_name="inference-climate-gan", workspace="style-gan")
@@ -684,15 +653,6 @@ def main():
 
 
 
-
-"""
-
- python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/testing_rbc_generator.py --dataset rbc_500 --input_channels 2 --start_res 8 \
-	--img_size 256 --gpu_num 8 --progressive True --phase train \
-	--checkpoint_dir ../stored_outputs/wo_style_rbc/checkpoint --result_dir ../stored_outputs/wo_style_rbc/result \
-	--log_dir ../stored_outputs/wo_style_rbc/log --sample_dir ../stored_outputs/wo_style_rbc/sample  --name_experiment "without_style_mixing_max_norm"
-
-"""
 
 
 if __name__ == '__main__':
