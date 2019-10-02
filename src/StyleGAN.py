@@ -601,6 +601,10 @@ class StyleGAN(object):
             print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  " \
                   % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))
 
+        if np.mod(idx + 1, self.save_freq[current_res]) == 0:
+          self.save(self.checkpoint_dir, counter)
+          print("saving file at checkpoint dir {} and counter {} ".format(self.checkpoint_dir, counter))
+
       start_batch_idx = 0
 
 
