@@ -140,6 +140,7 @@ class StyleGAN(object):
     print("# spectral normalization : ", self.sn)
     print("# store images: {}".format(self.store_images_flag))
     print("# use divergence in loss: {}".format(self.divergence_loss_flag))
+    print("# power spectra loss: {}".format(self.power_spectra_loss))
 
     print("\n\n")
 
@@ -420,7 +421,8 @@ class StyleGAN(object):
                   ps_real_std = tf.math.reduce_std(ps_real, axis=0)
                   ps_fake_mean = tf.math.reduce_mean(ps_fake, axis=0)
 
-                  ps_loss = tf.reduce_mean(tf.math.square((ps_fake_mean - ps_real_mean)/ps_real_std))
+                  ps_loss = tf.reduce_mean(tf.math.square((ps_fake_mean - ps_real_mean)/(ps_real_std+1e-4)))
+                  ps_loss /= 1.e6
                   ps_loss_per_gpu.append(ps_loss)
 
                   g_loss += ps_loss
