@@ -69,6 +69,9 @@ def parse_args():
 						help='name of the experiment, on comet_ml')
 
 
+	parser.add_argument('--power_spectra_loss', type=bool, default= False,
+            help='whether to add a power loss term to the generator loss, default is false')
+
 	return check_args(parser.parse_args())
 
 """checking arguments"""

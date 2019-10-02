@@ -23,8 +23,7 @@ import numpy as np
 import PIL.Image
 from tqdm import tqdm
 from data_pipeline import build_input_pipeline
-from RAdam import RAdamOptimizer
-
+from power_spectra import batch_power_spectrum
 
 import clr
 
@@ -79,6 +78,7 @@ class StyleGAN(object):
 
 		self.store_images_flag = False
 		self.style_mixing_flag = args.style_mixing_flag
+		self.power_spectra_loss = args.power_spectra_loss
 		self.divergence_lambda = 0.00
 		self.divergence_loss_flag = False
 		self.plotting_histogram_images = 64
@@ -171,6 +171,8 @@ class StyleGAN(object):
 		print("# spectral normalization : ", self.sn)
 		print("# store images: {}".format(self.store_images_flag))
 		print("# use divergence in loss: {}".format(self.divergence_loss_flag))
+		print("# power spectra loss: {}".format(self.power_spectra_loss))
+
 
 		print("\n\n")
 
@@ -407,6 +409,11 @@ class StyleGAN(object):
 			self.discriminator_optim = {}
 
 
+			if self.power_spectra_loss:
+				self.ps_loss_per_res = {}
+
+
+
 			self.alpha_summary_per_res = {}
 			self.d_summary_per_res = {}
 			self.g_summary_per_res = {}
@@ -422,7 +429,8 @@ class StyleGAN(object):
 
 				r1_penalty_list = []
 
-
+				if self.power_spectra_loss:
+					ps_loss_per_gpu = []
 
 				batch_size = self.batch_sizes.get(res, self.batch_size_base)
 				global_step = tf.get_variable('global_step_{}'.format(res), shape=[], dtype=tf.float32,
@@ -487,6 +495,24 @@ class StyleGAN(object):
 								
 
 
+								if self.power_spectra_loss:
+									ps_real = batch_power_spectrum(real_img)
+									ps_fake = batch_power_spectrum(fake_img)
+
+								if self.power_spectra_loss:
+									ps_real_mean = tf.math.reduce_mean(ps_real, axis=0)
+									ps_real_std = tf.math.reduce_std(ps_real, axis=0)
+									ps_fake_mean = tf.math.reduce_mean(ps_fake, axis=0)
+
+									ps_loss = tf.reduce_mean(tf.math.square((ps_fake_mean - ps_real_mean)/(ps_real_std+1e-4)))
+									ps_loss /= 1.e6
+									ps_loss_per_gpu.append(ps_loss)
+
+									g_loss += ps_loss
+
+
+
+
 
 				# prepare appropriate training vars
 				d_vars, g_vars = filter_trainable_variables(res)
@@ -496,6 +522,10 @@ class StyleGAN(object):
 
 
 				self.r1_penalty[res] = tf.reduce_mean(r1_penalty_list)
+
+
+				if self.power_spectra_loss:
+					self.ps_loss_per_res[res] = tf.reduce_mean(ps_loss_per_gpu)
 
 				d_lr = self.d_learning_rates.get(res, self.learning_rate_base)
 				g_lr = self.g_learning_rates.get(res, self.learning_rate_base)
@@ -525,6 +555,8 @@ class StyleGAN(object):
 					
 
 				self.alpha_stored_per_res[res] = alpha
+
+
 
 
 
@@ -644,7 +676,18 @@ class StyleGAN(object):
 																			 self.g_loss_per_res[current_res]])
 
 
-				r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res] ])
+
+				if self.power_spectra_loss:
+					r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res] ])
+					r1_loss, alpha, ps_loss = self.sess.run([self.r1_penalty[current_res],
+					self.alpha_stored_per_res[current_res],
+					self.ps_loss_per_res[current_res]])
+
+				else:
+					r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],
+					self.alpha_stored_per_res[current_res]])
+					r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res] ])
+
 
 				self.writer.add_summary(summary_g_per_res, idx)
 				self.writer.add_summary(summary_alpha, idx)
@@ -652,6 +695,10 @@ class StyleGAN(object):
 				# display training status
 				self.experiment.set_step(counter)
 				counter += 1
+				
+
+				if self.power_spectra_loss:
+					self.experiment.log_metric("ps_loss", ps_loss, step=counter)
 
 				self.experiment.log_metric("d_loss",d_loss,step=counter)
 				self.experiment.log_metric("g_loss",g_loss,step=counter)
@@ -720,8 +767,8 @@ class StyleGAN(object):
 
 	def load(self, checkpoint_dir, counter=0):
 	
+		checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
 		print(" [*] Reading checkpoints from {} with counter {} ".format(checkpoint_dir, counter))
-
 		states = tf.train.get_checkpoint_state(checkpoint_dir)
 		if(counter == 0):
 
