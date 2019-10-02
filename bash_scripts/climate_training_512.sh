@@ -19,7 +19,6 @@ module load tensorflow/gpu-1.13.1-py36
 
 
 #run the application:
-# python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/main.py --dataset FFHQ_128 --img_size 128 --gpu_num 2 --progressive True --phase train
 python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 --input_channels 1 --start_res 8 \
 	--img_size 512 --gpu_num 8 --progressive True --phase train \
 	--checkpoint_dir ./stored_outputs/wo_norm_512/checkpoint --result_dir ./stored_outputs/wo_norm_512/result \

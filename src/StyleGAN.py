@@ -79,9 +79,10 @@ class StyleGAN(object):
 		self.store_images_flag = False
 		self.style_mixing_flag = args.style_mixing_flag
 		self.power_spectra_loss = args.power_spectra_loss
-		self.divergence_lambda = 0.00
+		self.divergence_lambda = 0.001
 		self.divergence_loss_flag = False
-		self.plotting_histogram_images = 64
+		self.inference_counter_number = args.inference_counter_number
+
 
 
 		self.z_dim = 512
@@ -95,7 +96,7 @@ class StyleGAN(object):
 
 		self.batch_size_base = 4
 		self.learning_rate_base = 0.001
-		self.num_images_to_be_shown = 4
+
 
 		## training with trans indicated should we 
 		self.train_with_trans = {4: False, 8: False, 16: True, 32: True, 64: True, 128: True, 256: True, 512: True, 1024: True}
@@ -794,7 +795,7 @@ class StyleGAN(object):
 
 
 
-	def test(self, counter):
+	def test(self):
 
 		print("Entered test phase successfully")
 		tf.global_variables_initializer().run()
@@ -805,7 +806,7 @@ class StyleGAN(object):
 		
 		# could_load, checkpoint_counter = self.load(self.checkpoint_dir)
 		
-		could_load, checkpoint_counter = self.load(self.checkpoint_dir, counter)
+		could_load, checkpoint_counter = self.load(self.checkpoint_dir, self.inference_counter_number)
 
 		result_dir = os.path.join(self.result_dir, "single_generator_results/")
 		check_folder(result_dir)
@@ -840,8 +841,6 @@ class StyleGAN(object):
 		Data["seeds"] = seeds
 
 				
-
-		
 		trial = 0
 		save_file_path = str(result_dir) + "generator_{}_images_{}_file_{}.npy".format(checkpoint_counter, self.test_num, trial)
 		while(os.path.isfile(save_file_path)):

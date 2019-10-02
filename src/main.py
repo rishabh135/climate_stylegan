@@ -69,6 +69,10 @@ def parse_args():
 						help='name of the experiment, on comet_ml')
 
 
+	parser.add_argument('--inference_counter_number', type=int, default=0,
+						help='model_number_loaded_in_inference_stage')
+
+
 	parser.add_argument('--power_spectra_loss', type=bool, default= False,
             help='whether to add a power loss term to the generator loss, default is false')
 
