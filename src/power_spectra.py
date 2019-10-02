@@ -28,7 +28,7 @@ def azimAvg_tensor(image, center=None):
     """
     batch, channel, height, width = image.shape.as_list()
     r = get_indices(image.shape.as_list(), center)
-    
+
     # Get sorted radii
     ind = tf.argsort(tf.reshape(r, (batch, channel, -1,)))
     r_sorted = tf.gather(tf.reshape(r, (batch, channel, -1,)), ind, batch_dims=2)

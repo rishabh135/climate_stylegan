@@ -67,19 +67,29 @@ def parse_args():
             help='dataset_directory')
 
 
+
   parser.add_argument('--name_experiment', type=str, default="climate_data_wo_norm",
             help='name of the experiment, on comet_ml')
 
 
-  return check_args(parser.parse_args())
+  parser.add_argument('--inference_counter_number', type=int, default=0,
+					help='model_number_loaded_in_inference_stage')
+
+
+  parser.add_argument('--power_spectra_loss', type=bool, default= False,
+		help='whether to add a power loss term to the generator loss, default is false')
+
+	return check_args(parser.parse_args())
+
 
 """checking arguments"""
 def check_args(args):
 
   # import comet_ml in the top of your file
 
+
   experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa",
-                project_name="{}".format("climate-data"), workspace="style-gan")
+								project_name="{}".format("climate-training-r"), workspace="style-gan")
 
 
 
