@@ -33,9 +33,7 @@ def build_input_pipeline(filelist, res, batch_size, gpu_device):
     dtype = tf.float32
     header_offset = npy_header_offset(npy_file)
 
-    dataset = tf.data.FixedLengthRecordDataset(filelist,
-                                               num_features*dtype.size,
-                                               header_bytes=header_offset)
+    dataset = tf.data.FixedLengthRecordDataset(filelist,num_features*dtype.size, header_bytes=header_offset)
     
     dataset = dataset.map(lambda img: parse_fn(img, res, shape[0], shape[1], dtype),
                           num_parallel_calls=4)
@@ -51,4 +49,3 @@ def build_input_pipeline(filelist, res, batch_size, gpu_device):
     batch = tf.reshape(batch, (batch_size, res, res, shape[0]))
 
     return batch
-
