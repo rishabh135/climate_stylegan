@@ -3,21 +3,6 @@ from ops import *
 from utils import *
 import tensorflow
 
-
-
-"""
-
-wgan with gradient penalty
-
-keep the general paradigm of non-saturating loss, with add wasserstein loss : 
-
-check the shapes of final layers of discriminator 
-the output of w-gan would be twice due to gradient penalty
-
-"""
-
-print(tensorflow.__version__)
-
 from tensorflow.contrib.data import prefetch_to_device, shuffle_and_repeat, map_and_batch
 import numpy as np
 import PIL.Image
