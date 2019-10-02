@@ -71,9 +71,6 @@ def parse_args():
 					help='model_number_loaded_in_inference_stage')
 
 
-	parser.add_argument('--power_spectra_loss', type=bool, default= False,
-		help='whether to add a power loss term to the generator loss, default is false')
-
 	return check_args(parser.parse_args())
 
 
