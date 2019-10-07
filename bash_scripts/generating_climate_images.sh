@@ -16,14 +16,14 @@ module load python/3.7-anaconda-2019.07
 source activate tf-1.13
 module load tensorflow/gpu-1.13.1-py36
 
-
+# chekpoint_dir ./stored_outputs/wo_norm_512/checkpoint and counter 255468
 
 #run the application:
-python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 --input_channels 1 --start_res 8 --test_num 50 --inference_counter_number 0 \
-	--img_size 512 --gpu_num 8 --progressive True --phase test \
+python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 --input_channels 1 --start_res 8 --test_num 50 --inference_counter_number 255468 \
+	--img_size 512 --gpu_num 1 --progressive True --phase test \
 	--checkpoint_dir ./stored_outputs/wo_norm_512/checkpoint --result_dir ./stored_outputs/wo_norm_512/result \
 	--log_dir ./stored_outputs/wo_norm_512/log --sample_dir ./stored_outputs/wo_norm_512/sample \
 	--dataset_location /global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_original/ \
-	--name_experiment " generating climate images wo norm 512" 
+	--name_experiment "generating climate images wo norm 512" 
  
 

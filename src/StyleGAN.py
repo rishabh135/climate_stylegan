@@ -750,7 +750,6 @@ class StyleGAN(object):
 
 
 
-
 	def load(self, checkpoint_dir, counter=0):
 	
 		checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
@@ -772,11 +771,11 @@ class StyleGAN(object):
 
 
 		else:
-			load_model_path =  os.path.join(checkpoint_dir, self.model_dir)
+			specific_checkpoint_name = "/Climate-StyleGAN.model-{}".format(counter)
+			load_model_path =  checkpoint_dir + specific_checkpoint_name
 			self.saver.restore(self.sess, load_model_path)
 			print(" [*] Success to read {}".format(load_model_path))
 			return True, counter
-
 
 
 
