@@ -273,7 +273,7 @@ def calculate_std_over_all_years():
 
 	print("\n\n****** data from all years (1995-98)  [:, 128:640, 320:832] shape {}, max {} min {} std {} mean {} mode {} and frequency of mode : {}  \n\n ".format( numpy_array_of_omega.shape, numpy_array_of_omega.max(), numpy_array_of_omega.min(), numpy_array_of_omega.std(), numpy_array_of_omega.mean(), mode[0], mode[1] ))
 
-	return numpy_array_of_omega.std()	
+	return numpy_array_of_omega.std() 
 
 ##########################################################################################
 ##########################################################################################
