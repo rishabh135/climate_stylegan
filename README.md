@@ -18,7 +18,24 @@
        ├── 000001.jpg 
        ├── 000002.png
        └── ...
+
+
+
 ```
+
+
+
+### To create seven channel dataset for climate data :
+``` 
+python src/untar_all_six_variables.py
+python src/six_variables_climateset.py
+python src/combine_seven_channels_numpy.py
+```
+The cropped data will be located in folder : ```"/global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_seven_channels_by_year/"``` with the following channel order : 
+
+["pr", "prw", "psl", "ts", "ua850", "va850", "omega"]
+
+
 
 ### Train
 ```
