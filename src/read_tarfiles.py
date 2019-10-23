@@ -29,47 +29,47 @@ years = ["2012", "2013", "2014", "2015"]
 
 def extract_tarfile(year):
 
-	tarfile_path = "/global/cscratch1/sd/karthik_/CAM5.1_0.25degree/download2/CAM5-1-0.25degree_All-Hist_est1_v3_run1.cam.h3.{}-*.tar".format(year)
+    tarfile_path = "/global/cscratch1/sd/karthik_/CAM5.1_0.25degree/download2/CAM5-1-0.25degree_All-Hist_est1_v3_run1.cam.h3.{}-*.tar".format(year)
 
-	tarfile_extract_path = "/global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/CAM5_tar/tmp_untar/"
-	save_dir_path = "/global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/download2_climate_data_original/"
+    tarfile_extract_path = "/global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/CAM5_tar/tmp_untar/"
+    save_dir_path = "/global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/download2_climate_data_original/"
 
-	tarfiles = sorted(glob(tarfile_path))
+    tarfiles = sorted(glob(tarfile_path))
 
-	list_of_omega_data = []
-
-
-	for file in tarfiles:
-		all_ints = re.findall("\d+", file)
-		month = all_ints[-1]
-		
-		t = tarfile.open(file, 'r')
-		t.extractall(tarfile_extract_path+"year_{}_month_{}/".format(year,month))
-
-		netfiles_path = tarfile_extract_path+"year_{}_month_{}/*.nc".format(year, month)
-		net_cdf_files = sorted(glob(netfiles_path))
-
-		print("\n files found in the current directory for year {} = {}".format(year, len(net_cdf_files)))
-		    
-		for _, netfile in enumerate(net_cdf_files):
-
-			tmp_ds = xr.open_dataset(netfile, decode_times=False)
-			list_of_omega_data.append( np.expand_dims(tmp_ds["OMEGA500"][:, 128:640, 320:832].values, axis=1))
+    list_of_omega_data = []
 
 
+    for file in tarfiles:
+        all_ints = re.findall("\d+", file)
+        month = all_ints[-1]
+        
+        t = tarfile.open(file, 'r')
+        t.extractall(tarfile_extract_path+"year_{}_month_{}/".format(year,month))
+
+        netfiles_path = tarfile_extract_path+"year_{}_month_{}/*.nc".format(year, month)
+        net_cdf_files = sorted(glob(netfiles_path))
+
+        print("\n files found in the current directory for year {} = {}".format(year, len(net_cdf_files)))
+            
+        for _, netfile in enumerate(net_cdf_files):
+
+            tmp_ds = xr.open_dataset(netfile, decode_times=False)
+            list_of_omega_data.append( np.expand_dims(tmp_ds["OMEGA500"][:, 128:640, 320:832].values, axis=1))
 
 
-	tt = time.time()
-	numpy_array_of_omega = np.concatenate(list_of_omega_data, axis=0)
 
 
-	print("\n\n****** data from year {}  [:, 128:640, 320:832] shape {}, max {} min {} std {} mean {} \n\n ".format(year, numpy_array_of_omega.shape, numpy_array_of_omega.max(), numpy_array_of_omega.min(), numpy_array_of_omega.std(), numpy_array_of_omega.mean() ))
+    tt = time.time()
+    numpy_array_of_omega = np.concatenate(list_of_omega_data, axis=0)
 
-	if not os.path.exists(save_dir_path):
-		os.makedirs(save_dir_path)
 
-	np.save( str(save_dir_path) + "{}.npy".format(year), numpy_array_of_omega)
-	print("Time taken to complete iteration", time.time() - tt)
+    print("\n\n****** data from year {}  [:, 128:640, 320:832] shape {}, max {} min {} std {} mean {} \n\n ".format(year, numpy_array_of_omega.shape, numpy_array_of_omega.max(), numpy_array_of_omega.min(), numpy_array_of_omega.std(), numpy_array_of_omega.mean() ))
+
+    if not os.path.exists(save_dir_path):
+        os.makedirs(save_dir_path)
+
+    np.save( str(save_dir_path) + "{}.npy".format(year), numpy_array_of_omega)
+    print("Time taken to complete iteration", time.time() - tt)
 
 
 
@@ -78,7 +78,7 @@ def extract_tarfile(year):
 
 
 for year in years:
-	extract_tarfile(year)
+    extract_tarfile(year)
 
 print("\n\n DONE!!")
 
