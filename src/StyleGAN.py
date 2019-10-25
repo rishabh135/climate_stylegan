@@ -3,6 +3,7 @@ from ops import *
 from utils import *
 import tensorflow
 
+
 from tensorflow.contrib.data import prefetch_to_device, shuffle_and_repeat, map_and_batch
 import numpy as np
 import PIL.Image
@@ -10,7 +11,8 @@ from tqdm import tqdm
 from data_pipeline import build_input_pipeline
 from power_spectra import batch_power_spectrum
 
-import clr
+
+
 
 class StyleGAN(object):
 
