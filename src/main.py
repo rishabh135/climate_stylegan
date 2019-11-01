@@ -2,7 +2,8 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-from comet_ml import Experiment
+# from comet_ml import Experiment
+from comet_ml import OfflineExperiment
 from StyleGAN import StyleGAN
 
 
@@ -80,8 +81,10 @@ def check_args(args):
     # import comet_ml in the top of your file
 
 
-    experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa", project_name="{}".format("climate-training-r"), workspace="style-gan")
+    # experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa", project_name="{}".format("climate-training-r"), workspace="style-gan")
 
+
+    experiment = OfflineExperiment(project_name="{}_{}".format("climate_training_channels", args.input_channels), workspace="style-gan" ,offline_directory="./comet_ml_offline_experiments/")
 
 
     hyper_params = vars(args)
