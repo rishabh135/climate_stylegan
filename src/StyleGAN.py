@@ -143,7 +143,8 @@ class StyleGAN(object):
 
         print("##### Information #####")
         print("# dataset : ", self.dataset_name)
-        # print("# dataset number : ", self.dataset_num)
+        print("# Number of years considered : ", len(self.dataset))
+        print("# dataset number : ", self.dataset_num)
         print("# gpu : ", self.gpu_num)
         print("# batch_size in train phase : ", self.batch_sizes)
         print("# batch_size in test phase : ", self.batch_size)
