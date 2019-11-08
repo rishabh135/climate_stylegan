@@ -22,10 +22,10 @@ module load tensorflow/gpu-1.13.1-py36
 # python  /global/cscratch1/sd/rgupta2/backup/StyleGAN/src/StyleGAN-Tensorflow/main.py --dataset FFHQ_128 --img_size 128 --gpu_num 2 --progressive True --phase train
 python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 --input_channels 7 --start_res 8 \
 	--img_size 512 --gpu_num 8 --progressive True --phase train \
-	--checkpoint_dir ./stored_outputs/seven_channel_climate_data_512/checkpoint --result_dir ./stored_outputs/seven_channel_climate_data_512/result \
-	--log_dir ./stored_outputs/seven_channel_climate_data_512/log --sample_dir ./stored_outputs/seven_channel_climate_data_512/sample \
-	--dataset_location /global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_seven_channels_by_year \
-	--name_experiment "seven_channel_climate_data at 512 resolution"
+	--checkpoint_dir ./stored_outputs/normalized_seven_channel_512/checkpoint --result_dir ./stored_outputs/normalized_seven_channel_512/result \
+	--log_dir ./stored_outputs/normalized_seven_channel_512/log --sample_dir ./stored_outputs/normalized_seven_channel_512/sample \
+	--dataset_location /project/projectdirs/dasrepo/mustafa/data/climate/sims/normalized \
+	--name_experiment "normalized_seven_channel_climate_data at 512 resolution"
  
 
 
