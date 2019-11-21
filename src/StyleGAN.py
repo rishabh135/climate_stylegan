@@ -69,7 +69,7 @@ class StyleGAN(object):
         self.divergence_lambda = 0.001
         self.divergence_loss_flag = False
         self.inference_counter_number = args.inference_counter_number
-
+        self.number_for_l2_images = 200
 
 
         self.z_dim = 512
@@ -411,10 +411,19 @@ class StyleGAN(object):
             self.divergence_fake = {}
             self.divergence_real = {}
 
+            self.generated_images = {}
+            # self.real_images = {}            
+
 
             for res in self.resolutions[self.resolutions.index(self.start_res):]:
                 g_loss_per_gpu = []
                 d_loss_per_gpu = []
+
+                
+
+                generated_images_per_gpu = []
+                # real_images_per_gpu = []
+
 
                 r1_penalty_list = []
 
@@ -473,6 +482,11 @@ class StyleGAN(object):
                                 z = tf.random_normal(shape=[batch_size, self.z_dim])
                                 fake_img = self.generator(z, alpha, res)
                                 real_img = smooth_crossfade(real_img, alpha)
+                                
+                                generated_images_per_gpu.append(fake_img)
+                                # real_images_per_gpu.append(real_img)
+
+
                                 real_logit = self.discriminator(real_img, alpha, res)
                                 fake_logit = self.discriminator(fake_img, alpha, res)
 
@@ -511,7 +525,7 @@ class StyleGAN(object):
 
 
                 self.r1_penalty[res] = tf.reduce_mean(r1_penalty_list)
-
+                self.generated_images[res] = generated_images_per_gpu[-self.number_for_l2_images:]
 
                 if self.power_spectra_loss:
                     self.ps_loss_per_res[res] = tf.reduce_mean(ps_loss_per_gpu)
@@ -664,7 +678,8 @@ class StyleGAN(object):
                                                                              self.alpha_summary_per_res[current_res],
                                                                              self.g_loss_per_res[current_res]])
 
-
+                generated_fake_images = self.sess.run([self.generated_images[current_res]])
+                # real_images = 
 
                 if self.power_spectra_loss:
                     r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res] ])
@@ -681,6 +696,55 @@ class StyleGAN(object):
                 self.writer.add_summary(summary_g_per_res, idx)
                 self.writer.add_summary(summary_alpha, idx)
 
+
+
+                #  display l2 plots 
+
+                def calculateDistance(i1, i2):
+                    return np.mean((i1-i2)**2)
+
+                l2_generated = []
+                for i, img in enumerate(generated_fake_images):
+                    foo = [calculateDistance(img,j) for j in generated_fake_images[i+1:]]
+                    l2_generated.append(foo)
+
+                fake_distances = [j for i in l2_generated for j in i]
+
+
+
+
+
+
+
+
+                real_images = np.load(self.dataset[0])
+                print(" real_images type : {} ".format(type(real_images)))
+                l2_real = []
+                for i, img in enumerate(real_images):
+                    foo = [calculateDistance(img,j) for j in real_images[i+1:]]
+                    l2_real.append(foo)
+                    
+                real_distances = [j for i in l2_real for j in i]
+
+
+
+                fig=plt.figure()
+                plt.hist([real_distances, fake_distances ], color=['r', 'g'], bins='fd', linewidth=2 ,histtype='step', label=["real_100", "generated_100"], density=True)
+
+
+                self.experiment.log_figure(figure=plt,  figure_name=" l2 plots {} res {} ".format(idx, current_res) )
+
+
+
+
+
+
+
+
+
+
+
+
                 # display training status
                 self.experiment.set_step(counter)
                 counter += 1
@@ -693,6 +757,13 @@ class StyleGAN(object):
                 self.experiment.log_metric("g_loss",g_loss,step=counter)
                 self.experiment.log_metric("r1_penalty", r1_loss,step=counter)
                 self.experiment.log_metric("alpha value ", alpha, step=counter)
+
+
+
+                #   fake_values, real_values = self.sess.run([self.divergence_fake[current_res], self.divergence_real[current_res]])
+
+
+
 
 
 
