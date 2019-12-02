@@ -530,7 +530,7 @@ class StyleGAN(object):
                 if self.power_spectra_loss:
                     self.ps_loss_per_res[res] = tf.reduce_mean(ps_loss_per_gpu)
 
-                d_lr = self.d_learning_rates.get(res, self.learning_rate_base)
+                d_lr = self.d_learning_rates.get(res, self.learning_rate_base) * 3
                 g_lr = self.g_learning_rates.get(res, self.learning_rate_base)
 
                 if self.gpu_num == 1 :
@@ -595,6 +595,9 @@ class StyleGAN(object):
         # restore check-point if it exits (otherwise makes a checkpoint and starts training from scratch), you can optionally give an argument to force load a checkpoint from a certain point
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
         
+
+
+        real_images = np.load(self.dataset[0])[-self.number_for_l2_images:]
 
         if could_load:
 
@@ -666,7 +669,7 @@ class StyleGAN(object):
             for idx in range(start_batch_idx, current_iter):
 
                 # update D network
-                _, summary_d_per_res, d_loss = self.sess.run([self.discriminator_optim[current_res],
+                _, __, summary_d_per_res, d_loss = self.sess.run([self.discriminator_optim[current_res], self.discriminator_optim[current_res], 
                                                               self.d_summary_per_res[current_res],
                                                               self.d_loss_per_res[current_res]])
 
@@ -699,41 +702,6 @@ class StyleGAN(object):
 
 
                 #  display l2 plots 
-
-                def calculateDistance(i1, i2):
-                    return np.mean((i1-i2)**2)
-
-                l2_generated = []
-                for i, img in enumerate(generated_fake_images):
-                    foo = [calculateDistance(img,j) for j in generated_fake_images[i+1:]]
-                    l2_generated.append(foo)
-
-                fake_distances = [j for i in l2_generated for j in i]
-
-
-
-
-
-
-
-
-                real_images = np.load(self.dataset[0])
-                print(" real_images type : {} ".format(type(real_images)))
-                l2_real = []
-                for i, img in enumerate(real_images):
-                    foo = [calculateDistance(img,j) for j in real_images[i+1:]]
-                    l2_real.append(foo)
-                    
-                real_distances = [j for i in l2_real for j in i]
-
-
-
-                fig=plt.figure()
-                plt.hist([real_distances, fake_distances ], color=['r', 'g'], bins='fd', linewidth=2 ,histtype='step', label=["real_100", "generated_100"], density=True)
-
-
-                self.experiment.log_figure(figure=plt,  figure_name=" l2 plots {} res {} ".format(idx, current_res) )
-
 
 
 
@@ -771,6 +739,45 @@ class StyleGAN(object):
                     print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  " \
                         % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))
 
+
+                    def calculateDistance(i1, i2):
+                        return np.mean((i1-i2)**2)
+
+                    l2_generated = []
+                    for i, img in enumerate(generated_fake_images):
+                        foo = [calculateDistance(img,j) for j in generated_fake_images[i+1:]]
+                        l2_generated.append(foo)
+
+                    fake_distances = [j for i in l2_generated for j in i]
+
+
+
+                    
+                    print(" real_images type : {} ".format(type(real_images)))
+                    l2_real = []
+                    for i, img in enumerate(real_images):
+                        foo = [calculateDistance(img,j) for j in real_images[i+1:]]
+                        l2_real.append(foo)
+                        
+                    real_distances = [j for i in l2_real for j in i]
+
+
+
+                    fig=plt.figure()
+                    plt.hist([real_distances, fake_distances ], color=['r', 'g'], bins='fd', linewidth=2 ,histtype='step', label=["real_100", "generated_100"], density=True)
+                    save_path_dir =  os.path.join(self.result_dir , "l2_image_plots/") 
+                    
+                    if not os.path.exists(save_path_dir):
+                        os.makedirs(save_path_dir)
+                    plt.savefig( save_path_dir + "{}_at_res_{}.jpg".format(idx+1, current_res), dpi=200)
+                    self.experiment.log_figure(figure=plt,  figure_name=" l2_plots_{}_res_{}".format(idx, current_res) )
+
+
+
+
+
+
+
                 """
 
                 function to save iteration or not
@@ -779,6 +786,9 @@ class StyleGAN(object):
                 if (np.mod(idx + 1, self.save_freq[current_res]) == 0):
                     self.save(self.checkpoint_dir, counter)
                     print("[SAVING] chekpoint_dir {} and counter {} ".format(self.checkpoint_dir, counter))
+
+
+
 
         
 

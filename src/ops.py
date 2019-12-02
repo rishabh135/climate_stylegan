@@ -131,7 +131,7 @@ def compute_loss(real_images, real_logit, fake_logit):
     real_grads = tf.gradients(real_loss, [real_images])[0]
     r1_penalty = tf.reduce_sum(tf.square(real_grads), axis=[1, 2, 3])
     # r1_penalty = tf.reduce_mean(r1_penalty)
-    d_loss = d_loss_gan + r1_penalty * (r1_gamma * 0.5)
+    d_loss = d_loss_gan + r1_penalty * (r1_gamma * 3)
     d_loss = tf.reduce_mean(d_loss)
 
     # generator loss: logistic nonsaturating
