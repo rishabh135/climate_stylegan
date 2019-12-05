@@ -393,6 +393,7 @@ class StyleGAN(object):
             self.g_loss_per_res = {}
 
             self.r1_penalty = {}
+            self.ms_loss = {}
 
             self.generator_optim = {}
             self.discriminator_optim = {}
@@ -426,11 +427,15 @@ class StyleGAN(object):
 
 
                 r1_penalty_list = []
+                ms_loss_list = []
 
                 if self.power_spectra_loss:
                     ps_loss_per_gpu = []
 
-                batch_size = self.batch_sizes.get(res, self.batch_size_base)
+                
+                #  Divide by 2 to work on mode_seeking_loss
+                batch_size = self.batch_sizes.get(res, self.batch_size_base)//2
+
                 global_step = tf.get_variable('global_step_{}'.format(res), shape=[], dtype=tf.float32,
                                               initializer=tf.initializers.zeros(),
                                               trainable=False, aggregation=tf.VariableAggregation.ONLY_FIRST_TOWER)
@@ -479,22 +484,29 @@ class StyleGAN(object):
 
 
 
-                                z = tf.random_normal(shape=[batch_size, self.z_dim])
-                                fake_img = self.generator(z, alpha, res)
+                                z1 = tf.random_normal(shape=[batch_size, self.z_dim])
+                                z2 = tf.random_normal(shape=[batch_size, self.z_dim])
+
+
+                                fake_img1 = self.generator(z1, alpha, res)
+                                fake_img2 = self.generator(z2, alpha, res)
+                                
                                 real_img = smooth_crossfade(real_img, alpha)
                                 
-                                generated_images_per_gpu.append(fake_img)
+                                generated_images_per_gpu.append(fake_img1)
+                                generated_images_per_gpu.append(fake_img2)
                                 # real_images_per_gpu.append(real_img)
 
 
                                 real_logit = self.discriminator(real_img, alpha, res)
-                                fake_logit = self.discriminator(fake_img, alpha, res)
+                                fake_logit = self.discriminator(fake_img1, alpha, res)
 
 
-                                d_loss, g_loss, r1_penalty = compute_loss(real_img, real_logit, fake_logit)
+                                d_loss, g_loss, r1_penalty, ms_loss = compute_loss(real_img, real_logit, fake_logit, fake_img1, fake_img2, z1, z2)
                                 d_loss_per_gpu.append(d_loss)
                                 g_loss_per_gpu.append(g_loss)
                                 r1_penalty_list.append(r1_penalty)
+                                ms_loss_list.append(ms_loss)
                                 
 
 
@@ -525,7 +537,18 @@ class StyleGAN(object):
 
 
                 self.r1_penalty[res] = tf.reduce_mean(r1_penalty_list)
-                self.generated_images[res] = generated_images_per_gpu[-self.number_for_l2_images:]
+                self.ms_loss[res] = tf.reduce_mean(ms_loss_list)
+
+
+                if(len(generated_images_per_gpu) > self.number_for_l2_images):
+                    stored_generated_images = generated_images_per_gpu[-self.number_for_l2_images:]
+                else:
+                    stored_generated_images = generated_images_per_gpu
+                self.generated_images[res] = tf.concat(generated_images_per_gpu, axis=0)
+
+
+                print("\n\n\n shape verification ******** {}  {} ".format(len(generated_images_per_gpu), self.generated_images[res].get_shape().as_list()))
+
 
                 if self.power_spectra_loss:
                     self.ps_loss_per_res[res] = tf.reduce_mean(ps_loss_per_gpu)
@@ -553,8 +576,8 @@ class StyleGAN(object):
                 self.g_loss_per_res[res] = g_loss
 
 
-                if(self.store_images_flag):
-                    self.fake_images[res] = tf.concat(fake_images_per_gpu, axis=0)
+                # if(self.store_images_flag):
+                #     self.fake_images[res] = tf.concat(fake_images_per_gpu, axis=0)
                     
 
                 self.alpha_stored_per_res[res] = alpha
@@ -669,7 +692,7 @@ class StyleGAN(object):
             for idx in range(start_batch_idx, current_iter):
 
                 # update D network
-                _, __, summary_d_per_res, d_loss = self.sess.run([self.discriminator_optim[current_res], self.discriminator_optim[current_res], 
+                _, summary_d_per_res, d_loss = self.sess.run([self.discriminator_optim[current_res], 
                                                               self.d_summary_per_res[current_res],
                                                               self.d_loss_per_res[current_res]])
 
@@ -680,6 +703,9 @@ class StyleGAN(object):
                                                                              self.g_summary_per_res[current_res],
                                                                              self.alpha_summary_per_res[current_res],
                                                                              self.g_loss_per_res[current_res]])
+
+
+                _, ms_loss = self.sess.run([self.discriminator_optim[current_res], self.ms_loss[current_res] ])
 
                 generated_fake_images = self.sess.run([self.generated_images[current_res]])
                 # real_images = 
@@ -724,6 +750,8 @@ class StyleGAN(object):
                 self.experiment.log_metric("d_loss",d_loss,step=counter)
                 self.experiment.log_metric("g_loss",g_loss,step=counter)
                 self.experiment.log_metric("r1_penalty", r1_loss,step=counter)
+                self.experiment.log_metric("ms_loss", ms_loss, step=counter)
+                
                 self.experiment.log_metric("alpha value ", alpha, step=counter)
 
 
@@ -736,10 +764,11 @@ class StyleGAN(object):
 
 
                 if (np.mod(idx + 1, 100) == 0):
-                    print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  " \
-                        % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))
+                    print("Current res: [%4d] [%6d/%6d] with current  time: %4.4f, d_loss: %.8f, g_loss: %.8f  alpha: %.4f  ms_loss: %.2f" \
+                        % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha, ms_loss))
 
 
+                if (np.mod(idx + 1, 5) == 0):
                     def calculateDistance(i1, i2):
                         return np.mean((i1-i2)**2)
 
@@ -750,10 +779,10 @@ class StyleGAN(object):
 
                     fake_distances = [j for i in l2_generated for j in i]
 
-
+                    print("fake_distance len {} ".format(len(fake_distances)))
 
                     
-                    print(" real_images type : {} ".format(type(real_images)))
+                    # print(" real_images type : {} ".format(type(real_images)))
                     l2_real = []
                     for i, img in enumerate(real_images):
                         foo = [calculateDistance(img,j) for j in real_images[i+1:]]

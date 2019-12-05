@@ -81,10 +81,10 @@ def check_args(args):
     # import comet_ml in the top of your file
 
 
-    experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa", project_name="{}_{}".format("climate_training_channels", args.input_channels), workspace="style-gan")
+    # experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa", project_name="{}_{}".format("climate_training_channels", args.input_channels), workspace="style-gan")
 
 
-    # experiment = OfflineExperiment(project_name="{}_{}".format("climate_training_channels", args.input_channels), workspace="style-gan" ,offline_directory="./comet_ml_offline_experiments/")
+    experiment = OfflineExperiment(project_name="{}_{}".format("climate_training_channels", args.input_channels), workspace="style-gan" ,offline_directory="./comet_ml_offline_experiments/msl/")
 
 
     hyper_params = vars(args)
