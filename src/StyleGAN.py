@@ -544,7 +544,10 @@ class StyleGAN(object):
                     stored_generated_images = generated_images_per_gpu[-self.number_for_l2_images:]
                 else:
                     stored_generated_images = generated_images_per_gpu
-                self.generated_images[res] = tf.concat(generated_images_per_gpu, axis=0)
+
+
+                # self.generated_images[res].append(tf.concat(generated_images_per_gpu, axis=0))
+                self.generated_images[res].append(generated_images_per_gpu)
 
 
                 print("\n\n\n shape verification ******** {}  {} ".format(len(generated_images_per_gpu), self.generated_images[res].get_shape().as_list()))
