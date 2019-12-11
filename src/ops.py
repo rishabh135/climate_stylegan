@@ -122,7 +122,7 @@ def instance_norm(x, epsilon=1e-8):
 # StyleGAN trick function
 ##################################################################################
 
-def compute_loss(real_images, real_logit, fake_logit, fake_img1, fake_img2, z1, z2):
+def compute_loss(real_images, real_logit, fake_logit, fake_img1, z1, fake_img2=None, z2=None):
     r1_gamma, r2_gamma = 10.0, 0.0
 
     # discriminator loss: gradient penalty
@@ -136,17 +136,22 @@ def compute_loss(real_images, real_logit, fake_logit, fake_img1, fake_img2, z1, 
 
 
     # l1_norm_images = tf.abs()
-    l1_norm_images = tf.norm( tf.reshape((fake_img1 - fake_img2), [fake_img1.get_shape().as_list()[0], -1]), ord=1)
-    l1_norm_latent = tf.norm((z1 - z2), ord=1, axis=1)
+    # l1_norm_images = tf.norm( tf.reshape((fake_img1 - fake_img2), [fake_img1.get_shape().as_list()[0], -1]), ord=1)
+    # l1_norm_latent = tf.norm((z1 - z2), ord=1, axis=1)
 
-    mode_seeking_loss = tf.reduce_mean(l1_norm_images/l1_norm_latent)
+    # mode_seeking_loss = tf.reduce_mean(l1_norm_images/l1_norm_latent)
+    mode_seeking_loss = 0
+
+
+
     # l1_dist tf.keras.losses.MAE((fake_img1 - fake_img2)/ (z1-z2))
     # l1_dist_fake_imgs = tf.keras.losses.MAE(fake_img1, fake_img2)
     # l1_dist_latent = tf.keras.losses.MAE(fake_img1, fake_img2)
 
 
     # generator loss: logistic nonsaturating
-    g_loss = tf.nn.softplus(-fake_logit) + mode_seeking_loss
+    g_loss = tf.nn.softplus(-fake_logit) 
+    # + mode_seeking_loss
     g_loss = tf.reduce_mean(g_loss)
 
     return d_loss, g_loss, r1_penalty, mode_seeking_loss
