@@ -21,10 +21,10 @@ module load tensorflow/gpu-1.13.1-py36
 #run the application:
 python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 --input_channels 1 --start_res 8 \
 	--img_size 512 --gpu_num 8 --progressive True --phase train \
-	--checkpoint_dir ./stored_outputs/wo_norm_512_msl/checkpoint --result_dir ./stored_outputs/wo_norm_512_msl/result \
-	--log_dir ./stored_outputs/wo_norm_512_msl/log --sample_dir ./stored_outputs/wo_norm_512_msl/sample \
+	--checkpoint_dir ./stored_outputs/wo_norm_512_logan/checkpoint --result_dir ./stored_outputs/wo_norm_512_logan/result \
+	--log_dir ./stored_outputs/wo_norm_512_logan/log --sample_dir ./stored_outputs/wo_norm_512_logan/sample \
 	--dataset_location /global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_original/ \
-	--name_experiment " wo_norm_climate data at 512 with mode seeking loss"
+	--name_experiment " wo_norm_climate data at 512 with LoGAN"
  
 
 

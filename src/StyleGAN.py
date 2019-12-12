@@ -106,7 +106,7 @@ class StyleGAN(object):
 
         # self.print_freq = {4: 1000, 8: 500, 16: 500, 32: 500, 64: 100, 128: 100, 256: 10, 512: 10000, 1024: 10000}
 
-        self.save_freq = {4: 1000, 8: 1000, 16: 1000, 32: 1000, 64: 1000, 128: 3000, 256: 5000, 512: 10000, 1024: 10000}
+        self.save_freq = {4: 5000, 8: 5000, 16: 5000, 32: 5000, 64: 5000, 128: 5000, 256: 5000, 512: 10000, 1024: 10000}
 
         self.print_freq.update((x, y // self.gpu_num) for x, y in self.print_freq.items())
         self.save_freq.update((x, y // self.gpu_num) for x, y in self.save_freq.items())
@@ -495,9 +495,18 @@ class StyleGAN(object):
 
 
 
+
+
+                                ##################################################################################
+                                # LoGAN implemented with adding z1 gradient
+                                ##################################################################################
+
                                 z1 = tf.random_normal(shape=[batch_size, self.z_dim])
                                 z1 += self.gradient_over_latent(z1, alpha, res) 
                                 
+
+
+
                                 # z2 = tf.random_normal(shape=[batch_size, self.z_dim])
                                 # z2 += gradient_over_latent(z1, alpha, res) 
 
@@ -577,7 +586,7 @@ class StyleGAN(object):
 
 
 
-                print("\n\n\n shape verification ******** {}  {} {} ".format(len(generated_images_per_gpu), self.generated_images[res].get_shape().as_list(), res))
+                # print("\n\n\n shape verification ******** {}  {} {} ".format(len(generated_images_per_gpu), self.generated_images[res].get_shape().as_list(), res))
 
 
                 if self.power_spectra_loss:
@@ -647,10 +656,34 @@ class StyleGAN(object):
 
         # restore check-point if it exits (otherwise makes a checkpoint and starts training from scratch), you can optionally give an argument to force load a checkpoint from a certain point
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+
+
+
+
+        ##################################################################################
+        # Pre calculating l2 distances for real images  
+        ##################################################################################
         
 
 
+        def calculateDistance(i1, i2):
+            return np.mean((i1-i2)**2)
+
         real_images = np.load(self.dataset[0])[-self.number_for_l2_images:]
+
+        l2_real = []
+        for i, img in enumerate(real_images):
+            foo = [calculateDistance(img,j) for j in real_images[i+1:]]
+            l2_real.append(foo)
+            
+        real_distances = [j for i in l2_real for j in i]
+
+
+
+
+
+
+
 
         if could_load:
 
@@ -803,8 +836,7 @@ class StyleGAN(object):
 
 
                 if (np.mod(idx + 1, 500) == 0):
-                    def calculateDistance(i1, i2):
-                        return np.mean((i1-i2)**2)
+
 
                     l2_generated = []
                     for i, img in enumerate(generated_fake_images):
@@ -813,16 +845,11 @@ class StyleGAN(object):
 
                     fake_distances = [j for i in l2_generated for j in i]
 
-                    # print("fake_distance len {} ".format(len(fake_distances)))
 
-                    
+
+                    # print("fake_distance len {} ".format(len(fake_distances)))
                     # print(" real_images type : {} ".format(type(real_images)))
-                    l2_real = []
-                    for i, img in enumerate(real_images):
-                        foo = [calculateDistance(img,j) for j in real_images[i+1:]]
-                        l2_real.append(foo)
-                        
-                    real_distances = [j for i in l2_real for j in i]
+
 
 
 
