@@ -23,6 +23,7 @@ class StyleGAN(object):
         self.progressive = args.progressive
 
         self.model_name = "Climate-StyleGAN"
+
         self.sess = sess
         self.dataset_name = args.dataset
         self.checkpoint_dir = args.checkpoint_dir
@@ -69,6 +70,9 @@ class StyleGAN(object):
         self.divergence_loss_flag = False
         self.inference_counter_number = args.inference_counter_number
         self.number_for_l2_images = 200
+        self.mode_seeking_gan = False;
+
+
 
 
         self.z_dim = 512
@@ -670,6 +674,7 @@ class StyleGAN(object):
             return np.mean((i1-i2)**2)
 
         real_images = np.load(self.dataset[0])[-self.number_for_l2_images:]
+        np.random.shuffle(real_images)
 
         l2_real = []
         for i, img in enumerate(real_images):
