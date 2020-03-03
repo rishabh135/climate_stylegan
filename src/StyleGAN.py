@@ -775,7 +775,7 @@ class StyleGAN(object):
 
                 # _, ms_loss = self.sess.run([self.discriminator_optim[current_res], self.ms_loss[current_res] ])
 
-                generated_fake_images = self.sess.run([self.generated_images[current_res]])[0]
+                generated_fake_images = self.sess.run([self.generated_images[current_res]])[0][-self.number_for_l2_images:]
                 # real_images = 
 
                 # print("\n generated_fake_images {} {} ".format(type(generated_fake_images),  current_res))
