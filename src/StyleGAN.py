@@ -2,7 +2,7 @@ import time, re, sys
 from ops import *
 from utils import *
 import tensorflow
-
+tensorflow.get_logger().setLevel('INFO')
 
 from tensorflow.contrib.data import prefetch_to_device, shuffle_and_repeat, map_and_batch
 import numpy as np
@@ -480,7 +480,7 @@ class StyleGAN(object):
 
                                 if(self.climate_data):
                                     
-                                    real_img  = build_input_pipeline(self.dataset, res, batch_size, gpu_device)
+                                    real_img  = build_input_pipeline(self.dataset, res, batch_size, gpu_device, self.input_channels)
 
 
                                 else:
@@ -676,6 +676,9 @@ class StyleGAN(object):
         real_images = np.load(self.dataset[0])[-self.number_for_l2_images:]
         np.random.shuffle(real_images)
 
+        # addding capability for l2 plots with specific channels
+        real_images = real_images[-self.input_channels:]
+        print("real_images shape {}".format(real_images.shape))
         l2_real = []
         for i, img in enumerate(real_images):
             foo = [calculateDistance(img,j) for j in real_images[i+1:]]
@@ -840,7 +843,7 @@ class StyleGAN(object):
                         % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))
 
 
-                if (np.mod(idx + 1, 500) == 0):
+                if (np.mod(idx + 1, 1000) == 0):
 
 
                     l2_generated = []
@@ -859,12 +862,16 @@ class StyleGAN(object):
 
 
                     fig=plt.figure()
+                    plt.xlabel("frequency of pairs")
+                    plt.ylabel("l2 distance")
                     plt.hist([real_distances, fake_distances ], color=['r', 'g'], bins='fd', linewidth=2 ,histtype='step', label=["real_100", "generated_100"], density=True)
+                    plt.legend(loc="upper left")
+
                     save_path_dir =  os.path.join(self.result_dir , "l2_image_plots/") 
                     
                     if not os.path.exists(save_path_dir):
                         os.makedirs(save_path_dir)
-                    plt.savefig( save_path_dir + "{}_at_res_{}.jpg".format(idx+1, current_res), dpi=200)
+                    plt.savefig( save_path_dir + "{}_at_res_{}.png".format(idx+1, current_res), dpi=200)
                     self.experiment.log_figure(figure=plt,  figure_name=" l2_plots_{}_res_{}".format(idx, current_res) )
 
 

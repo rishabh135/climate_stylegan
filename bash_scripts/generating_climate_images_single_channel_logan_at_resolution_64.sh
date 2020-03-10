@@ -31,12 +31,12 @@ module load tensorflow/gpu-1.13.1-py36
 
 
 #run the application:
-python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 --input_channels 7 --start_res 8 --test_num 50 --inference_counter_number 24219 \
-	--img_size 512 --gpu_num 1 --progressive True --phase test \
-	--checkpoint_dir ./stored_outputs/logan_seven_channel_norm/checkpoint --result_dir ./stored_outputs/logan_seven_channel_norm/result \
-	--log_dir ./stored_outputs/logan_seven_channel_norm/log --sample_dir ./stored_outputs/logan_seven_channel_norm/sample \
+python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 --input_channels 1 --start_res 8 --test_num 50 --inference_counter_number 31719 \
+	--img_size 64 --gpu_num 1 --progressive True --phase test \
+	--checkpoint_dir ./stored_outputs/wo_norm_512_logan/checkpoint --result_dir ./stored_outputs/wo_norm_512_logan/result \
+	--log_dir ./stored_outputs/wo_norm_512_logan/log --sample_dir ./stored_outputs/wo_norm_512_logan/sample \
 	--dataset_location /project/projectdirs/dasrepo/mustafa/data/climate/sims/normalized \
-	--name_experiment "LoGAN normalized generated images seven channel climate data at 512 for 266718"
+	--name_experiment "LoGAN normalized generated images one channel climate data at 64 for 31719"
  
 
 

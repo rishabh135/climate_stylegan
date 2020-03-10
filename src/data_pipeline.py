@@ -20,11 +20,13 @@ def npy_header_offset(npy_path):
 
 def parse_fn(img, res, input_channels, img_size, dtype):
     img = tf.decode_raw(img, dtype)
-    img = tf.reshape(img, [input_channels, img_size, img_size])
+    img = tf.reshape(img, [-1, img_size, img_size])
     img = tf.transpose(img, perm=[1,2,0])
-    return tf.image.resize(img, size=[res, res], method=tf.image.ResizeMethod.BILINEAR)
+    img = tf.image.resize(img, size=[res, res], method=tf.image.ResizeMethod.BILINEAR)
+    partial_channels = img[:,:, -input_channels:]
+    return partial_channels
 
-def build_input_pipeline(filelist, res, batch_size, gpu_device):
+def build_input_pipeline(filelist, res, batch_size, gpu_device, input_channels):
 
     with tf.device('/cpu:0'):
         npy_file = filelist[0]
@@ -35,7 +37,7 @@ def build_input_pipeline(filelist, res, batch_size, gpu_device):
 
         dataset = tf.data.FixedLengthRecordDataset(filelist,num_features*dtype.size, header_bytes=header_offset)
         
-        dataset = dataset.map(lambda img: parse_fn(img, res, shape[0], shape[1], dtype),
+        dataset = dataset.map(lambda img: parse_fn(img, res, input_channels, shape[1], dtype),
                                                     num_parallel_calls=4)
 
         dataset = dataset.repeat(None)
@@ -46,6 +48,5 @@ def build_input_pipeline(filelist, res, batch_size, gpu_device):
 
         inputs_iterator = inputs.make_one_shot_iterator()
         batch = inputs_iterator.get_next()
-        batch = tf.reshape(batch, (batch_size, res, res, shape[0]))
-
+        batch = tf.reshape(batch, (batch_size, res, res, input_channels))
         return batch
