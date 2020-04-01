@@ -71,6 +71,7 @@ class StyleGAN(object):
         self.inference_counter_number = args.inference_counter_number
         self.number_for_l2_images = 200
         self.mode_seeking_gan = False;
+        self.channels_list = args.channels_list
 
 
 
@@ -101,6 +102,8 @@ class StyleGAN(object):
         
 
 
+
+
         self.g_learning_rates = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
         self.d_learning_rates = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
 
@@ -123,6 +126,9 @@ class StyleGAN(object):
         # self.counter_number = 118240
         self.climate_data = self.dataset_name.startswith("climate")
         self.dataset_location = args.dataset_location
+
+
+
 
         if(self.climate_data):
             self.dataset = load_from_numpy(self.dataset_name, self.dataset_location)
@@ -334,10 +340,11 @@ class StyleGAN(object):
             res = r_resolutions[-1]
             n_f = r_featuremaps[-1]
 
+            penultimate_embedding = x
             logit = discriminator_last_block(x, res, n_f, n_f, self.sn)
 
                     
-            return logit
+            return logit, penultimate_embedding
 
     ##################################################################################
     # Technical skills
@@ -480,7 +487,7 @@ class StyleGAN(object):
 
                                 if(self.climate_data):
                                     
-                                    real_img  = build_input_pipeline(self.dataset, res, batch_size, gpu_device, self.input_channels)
+                                    real_img  = build_input_pipeline(self.dataset, res, batch_size, gpu_device, self.input_channels, None)
 
 
                                 else:
@@ -635,11 +642,22 @@ class StyleGAN(object):
                 self.d_summary_per_res[res] = tf.summary.scalar("d_loss_{}".format(res), self.d_loss_per_res[res])
                 self.g_summary_per_res[res] = tf.summary.scalar("g_loss_{}".format(res), self.g_loss_per_res[res])
 
-        else :
+        elif (self.phase == "test") :
             """" Testing """
             test_z = tf.random_normal(shape=[self.batch_size, self.z_dim])
             alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
             self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
+
+
+        elif (self.phase == "discriminator_tsne"):
+            for gpu_id in range(self.gpu_num):
+                # with tf.device(tf.DeviceSpec(device_type="GPU", device_index=gpu_id)):
+                #     with tf.variable_scope(tf.get_variable_scope(), reuse=(gpu_id > 0)):
+                # images
+                alpha=0.0
+                gpu_device = '/gpu:{}'.format(gpu_id)                                    
+                real_img  = build_input_pipeline(self.dataset, self.img_size, self.batch_size, gpu_device, self.input_channels, channels_list=None, repeat_flag=False)
+                _, self.discriminator_embedding = self.discriminator(real_img, alpha, self.img_size)
 
 
     ##################################################################################
@@ -677,7 +695,7 @@ class StyleGAN(object):
         np.random.shuffle(real_images)
 
         # addding capability for l2 plots with specific channels
-        real_images = real_images[-self.input_channels:]
+        real_images = real_images[:,:,:, -self.input_channels:]
         print("real_images shape {}".format(real_images.shape))
         l2_real = []
         for i, img in enumerate(real_images):
@@ -962,6 +980,76 @@ class StyleGAN(object):
             self.saver.restore(self.sess, load_model_path)
             print(" [*] Success to read {}".format(load_model_path))
             return True, counter
+
+
+
+
+
+
+    def discriminator_tsne(self):
+
+        print("Entered discriminator_tsne phase successfully")
+        tf.global_variables_initializer().run()
+
+        print("intitialized tensorflow variable")
+
+        self.saver = tf.train.Saver()
+        
+        # could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+        
+        could_load, checkpoint_counter = self.load(self.checkpoint_dir, self.inference_counter_number)
+
+        result_dir = os.path.join(self.result_dir, "single_generator_results/")
+        check_folder(result_dir)
+
+        if could_load:
+            print(" [*] Load SUCCESS with checkpoint counter {}".format(checkpoint_counter))
+        else:
+            print(" [!] Load failed...")
+
+
+
+        # for gpu_id in range(self.gpu_num):
+        #     with tf.device(tf.DeviceSpec(device_type="GPU", device_index=gpu_id)):
+        #         # with tf.variable_scope(tf.get_variable_scope(), reuse=(gpu_id > 0)):
+        #         #     # images
+        #         gpu_device = '/gpu:{}'.format(gpu_id)
+        #         real_img  = build_input_pipeline(self.dataset, self.img_size, self.batch_size, gpu_device, self.input_channels, channels_list=None, repeat_flag=False)    
+        
+        discriminator_tsne_embedding = []
+        alpha=0.0
+
+        for minibatch in range(int( 2920 * len(self.dataset)/ int(self.batch_size))):
+            out = self.sess.run(self.discriminator_embedding) # switch to train dataset
+            # print("\n\n out shape  {} \n\n".format(out.shape))
+            discriminator_tsne_embedding.append(out)
+
+        # print("\n\n {} \n\n".format(real_img.shape))
+        # real_logit = self.discriminator(real_img, alpha, self.img_size)
+
+        # try:
+        #     while True:
+
+
+        #         # print("{} and {} ".format(out[0].shape, out[1].shape))
+        # except tf.errors.OutOfRangeError:
+        #     pass
+
+        discriminator_embedding = np.concatenate(discriminator_tsne_embedding, axis=0 )
+
+                
+        trial = 0
+        save_file_path = str(result_dir) + "discriminator_{}_embedding_file_{}.npy".format(checkpoint_counter, trial)
+        while(os.path.isfile(save_file_path)):
+            trial += 1
+            save_file_path = str(result_dir) + "discriminator_{}_embedding_file_{}.npy".format(checkpoint_counter, trial)
+
+        np.save( save_file_path, discriminator_embedding)
+        print(" Discriminator embedding Operation completed with save file path = {} ".format(save_file_path))
+
+
+
+
 
 
 

@@ -18,15 +18,47 @@ def npy_header_offset(npy_path):
             raise ValueError('Invalid NPY file.')
         return f.tell()
 
-def parse_fn(img, res, input_channels, img_size, dtype):
+
+def list_slice(tensor, indices, axis):
+    """
+    Args
+    ----
+    tensor (Tensor) : input tensor to slice
+    indices ( [int] ) : list of indices of where to perform slices
+    axis (int) : the axis to perform the slice on
+    """
+
+    slices = []   
+
+    ## Set the shape of the output tensor. 
+    # Set any unknown dimensions to -1, so that reshape can infer it correctly. 
+    # Set the dimension in the slice direction to be 1, so that overall dimensions are preserved during the operation
+    shape = tensor.get_shape().as_list()
+    shape[shape==None] = -1
+    shape[axis] = 1
+
+    nd = len(shape)
+
+    for i in indices:   
+        _slice = [slice(None)]*nd
+        _slice[axis] = slice(i,i+1)
+        slices.append(tf.reshape(tensor[_slice], shape))
+
+    return tf.concat(slices, axis=axis)
+
+
+def parse_fn(img, res, input_channels, img_size, dtype, channels_list):
     img = tf.decode_raw(img, dtype)
     img = tf.reshape(img, [-1, img_size, img_size])
     img = tf.transpose(img, perm=[1,2,0])
     img = tf.image.resize(img, size=[res, res], method=tf.image.ResizeMethod.BILINEAR)
-    partial_channels = img[:,:, -input_channels:]
-    return partial_channels
+    img = img[:,:,-input_channels:]
+    # if(channels_list != None):
+    #     img = list_slice(img, channels_list, 2)
+    
+    return img
 
-def build_input_pipeline(filelist, res, batch_size, gpu_device, input_channels):
+def build_input_pipeline(filelist, res, batch_size, gpu_device, input_channels, channels_list, repeat_flag=True):
 
     with tf.device('/cpu:0'):
         npy_file = filelist[0]
@@ -37,10 +69,11 @@ def build_input_pipeline(filelist, res, batch_size, gpu_device, input_channels):
 
         dataset = tf.data.FixedLengthRecordDataset(filelist,num_features*dtype.size, header_bytes=header_offset)
         
-        dataset = dataset.map(lambda img: parse_fn(img, res, input_channels, shape[1], dtype),
+        dataset = dataset.map(lambda img: parse_fn(img, res, input_channels, shape[1], dtype, channels_list),
                                                     num_parallel_calls=4)
 
-        dataset = dataset.repeat(None)
+        if(repeat_flag):
+            dataset = dataset.repeat(None)
         dataset = dataset.shuffle(batch_size*100)
         dataset = dataset.batch(batch_size, drop_remainder=True)
         dataset = dataset.prefetch(10)

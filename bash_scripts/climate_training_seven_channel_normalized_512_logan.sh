@@ -13,10 +13,7 @@ module load cuda/10.0.130
 
 # module load cudatoolkit/10.0.130_3.22-7.0.0.1_3.3__gdfb4ce5
 # module load nccl
-module load python/3.7-anaconda-2019.07
-source activate tf-1.13
-module load tensorflow/gpu-1.13.1-py36
-
+module load tensorflow/gpu-1.15.0-py37 
 
 
 

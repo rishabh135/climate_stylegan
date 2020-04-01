@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('--iteration', type=int, default=120, help='The number of images used in the train phase 120k by default')
     parser.add_argument('--max_iteration', type=int, default=2500, help='The total number of images 2500k by default')
 
-    parser.add_argument('--batch_size', type=int, default=1, help='The size of batch in the test phase')
+    parser.add_argument('--batch_size', type=int, default=8, help='The size of batch in the test phase')
     parser.add_argument('--gpu_num', type=int, default=8, help='The number of gpu')
     parser.add_argument('--progressive', type=str2bool, default=True, help='use progressive training')
     parser.add_argument('--sn', type=str2bool, default=False, help='use spectral normalization')
@@ -72,8 +72,16 @@ def parse_args():
                     help='model_number_loaded_in_inference_stage')
 
 
+    parser.add_argument('--channels_list', type=list, default=None,
+                    help='subset_of_channels_to_be_used_for_training')
+
+
     return check_args(parser.parse_args())
 
+
+
+
+# ["pr", "prw", "psl", "ts", "ua850", "va850", "omega"] the channels order
 
 """checking arguments"""
 def check_args(args):
@@ -148,6 +156,12 @@ def main():
                 gan.test()
                 print(" [*] Test finished!")
 
+
+            if args.phase == 'discriminator_tsne' :
+                gan.discriminator_tsne()
+                print(" [*] discriminator_tsne finished!")
+
+            
             if args.phase == 'draw' :
                 if args.draw == 'style_mix' :
                     gan.draw_style_mixing_figure()
