@@ -47,18 +47,25 @@ def list_slice(tensor, indices, axis):
     return tf.concat(slices, axis=axis)
 
 
-def parse_fn(img, res, input_channels, img_size, dtype, channels_list):
+def parse_fn(img, res, input_channels, img_size, dtype, channels_list, crop_size):
     img = tf.decode_raw(img, dtype)
     img = tf.reshape(img, [-1, img_size, img_size])
+
+    """
+    To crop a image randomly from the given dataset of shape 512
+
+    """
+    # img  = tf.random_crop(img, size=(input_channels, crop_size, crop_size))
+    
     img = tf.transpose(img, perm=[1,2,0])
     img = tf.image.resize(img, size=[res, res], method=tf.image.ResizeMethod.BILINEAR)
-    img = img[:,:,-input_channels:]
+    img = img[:,:,channels_list]
     # if(channels_list != None):
     #     img = list_slice(img, channels_list, 2)
     
     return img
 
-def build_input_pipeline(filelist, res, batch_size, gpu_device, input_channels, channels_list, repeat_flag=True):
+def build_input_pipeline(filelist, res, batch_size, gpu_device, input_channels, channels_list, crop_size, repeat_flag=True):
 
     with tf.device('/cpu:0'):
         npy_file = filelist[0]
@@ -69,7 +76,7 @@ def build_input_pipeline(filelist, res, batch_size, gpu_device, input_channels, 
 
         dataset = tf.data.FixedLengthRecordDataset(filelist,num_features*dtype.size, header_bytes=header_offset)
         
-        dataset = dataset.map(lambda img: parse_fn(img, res, input_channels, shape[1], dtype, channels_list),
+        dataset = dataset.map(lambda img: parse_fn(img, res, input_channels, shape[1], dtype, channels_list, crop_size),
                                                     num_parallel_calls=4)
 
         if(repeat_flag):

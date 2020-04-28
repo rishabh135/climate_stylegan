@@ -76,6 +76,14 @@ def parse_args():
                     help='subset_of_channels_to_be_used_for_training')
 
 
+    parser.add_argument('--crop_size', type=int, default=512,
+                    help='crop_size_of_orginal_image_for_data_processing')
+
+    parser.add_argument('--tsne_real_data', type=bool, default= False,
+                        help='discriminator_tsne embedding for real data, default is false')
+
+
+
     return check_args(parser.parse_args())
 
 
