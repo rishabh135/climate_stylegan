@@ -29,7 +29,7 @@ module load tensorflow/gpu-1.15.0-py37
 
 
 python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 --input_channels 3 --start_res 8 --test_num 50 --inference_counter_number 267968 \
-	--img_size 512 --gpu_num 1 --progressive True --phase discriminator_tsne \
+	--img_size 512 --gpu_num 1 --progressive True --phase discriminator_tsne --tsne_real_data False \
 	--checkpoint_dir ./stored_outputs/logan_three_channel_norm/checkpoint --result_dir ./stored_outputs/logan_three_channel_norm/result \
 	--log_dir ./stored_outputs/logan_three_channel_norm/log --sample_dir ./stored_outputs/logan_three_channel_norm/sample \
 	--dataset_location /project/projectdirs/dasrepo/mustafa/data/climate/sims/normalized \

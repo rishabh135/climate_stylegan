@@ -1,4 +1,4 @@
-    import time, re, sys
+import time, re, sys
 from ops import *
 from utils import *
 import tensorflow
@@ -73,7 +73,7 @@ class StyleGAN(object):
         self.mode_seeking_gan = False;
         self.channels_list = args.channels_list
         self.crop_size = args.crop_size
-        self.tsne_real_data = args.tsne_real_data
+        self.tsne_real_data = False
 
 
 
@@ -416,10 +416,11 @@ class StyleGAN(object):
 
 
     def batch(self, iterable, n=1):
+
         l = len(iterable)
         for ndx in range(0, l, n):
-            yield iterable[ndx:min(ndx + n, l)]
-
+            tmp = tf.convert_to_tensor(iterable[ndx:min(ndx + n, l)], dtype=tf.float32)
+            yield tmp
     
 
     ##################################################################################
@@ -689,12 +690,21 @@ class StyleGAN(object):
                     climate_counter = self.inference_counter_number
                     load_path = "/global/cscratch1/sd/rgupta2/backup/climate_stylegan/test_samples/"
                     self.loaded_fake_img_path = np.load (load_path+ "logan_three_channel_norm_climate_images_at_generator_{}_512.npy".format(climate_counter))
-                    print(" shape  loaded_fake_img_path {}   batch_size {} ".format(self.loaded_fake_img_path.shape , self.batch_size))
+                    
+                    # shape  loaded_fake_img_path (1000, 512, 512, 3)   batch_size 8
+
                     self.discriminator_embedding_size = self.loaded_fake_img_path.shape[0]/self.batch_size
+                    print(" shape  loaded_fake_img_path {}   batch_size {}  discriminator_embedding_size {} \n\n".format(self.loaded_fake_img_path.shape , self.batch_size, self.discriminator_embedding_size))
+                    
                     fake_img = self.batch(self.loaded_fake_img_path, self.batch_size)
+                    
+
+                    # print(" shape  fake_img   batch_size {} ".format(self.loaded_fake_img_path.shape , self.batch_size))
+                    # shape  loaded_fake_img_path (1000, 512, 512, 3)   batch_size 8
+                    
                     _, self.discriminator_embedding = self.discriminator( next(fake_img), alpha, self.img_size, tsne_flag=True)
                     
-                    print(" {} ".format(self.discriminator_embedding.shape()))
+                    print(" {} ".format(self.discriminator_embedding.shape  ))
                     # for fake_img in batch(self.loaded_fake_img_path, self.batch_size):
                     #     print(" fake img shape : {} ".format(fake_img.shape))
                     #     # np.random.shuffle(generated_three_channel_data)
@@ -1066,13 +1076,15 @@ class StyleGAN(object):
             self.discriminator_embedding_size =  int( 2920 * len(self.dataset)/ int(self.batch_size))
             for minibatch in range( self.discriminator_embedding_size) :
                 out = self.sess.run(self.discriminator_embedding) # switch to train dataset
-                print("\n\n out shape  {} \n\n".format(out.shape))
+                # print("\n\n out shape  {} \n\n".format(out.shape))
                 discriminator_tsne_embedding.append(out)
 
         else:
-            for minibatch in range(self.discriminator_embedding_size):
+            for minibatch in range( int(self.discriminator_embedding_size)) :
                 out = self.sess.run(self.discriminator_embedding)
-                print("\n\n out shape  {} \n\n".format(out.shape))
+
+                # print("\n\n out shape  {} \n\n".format(out.shape))
+                #  out shape  (8, 4, 4, 512)
                 discriminator_tsne_embedding.append(out)
 
 
