@@ -986,6 +986,7 @@ class StyleGAN(object):
 
 
                     fig=plt.figure()
+                    plt.clf()
                     plt.xlabel("frequency of pairs")
                     plt.ylabel("l2 distance")
                     plt.hist([real_distances, fake_distances ], color=['r', 'g'], bins='fd', linewidth=2 ,histtype='step', label=["real_100", "generated_100"], density=True)
