@@ -12,7 +12,6 @@ from data_pipeline import build_input_pipeline
 from power_spectra import batch_power_spectrum
 
 
-
 class StyleGAN(object):
 
     def __init__(self, sess, args, experiment):
@@ -74,8 +73,9 @@ class StyleGAN(object):
         self.channels_list = args.channels_list
         self.crop_size = args.crop_size
         self.tsne_real_data = False
-
-
+        self.only_ux = args.only_ux
+        self.both_ux_uy = args.both_ux_uy
+        self.custom_cropping_flag = args.custom_cropping_flag
 
 
         self.z_dim = 512
@@ -163,6 +163,11 @@ class StyleGAN(object):
         print("resolutions: ", self.resolutions)
         print("feature maps: ", self.featuremaps)
 
+        print("# Style mixing flag: ", self.style_mixing_flag)
+        print("# Style mixing percentage : ", self.style_mixing_prob)
+        print("# Custom Cropping flag : ", self.custom_cropping_flag)
+
+
         print("# start resolution : ", self.start_res)
         print("# target resolution : ", self.img_size)
         print("# iteration per resolution : ", self.iteration)
@@ -174,8 +179,10 @@ class StyleGAN(object):
         print("# power spectra loss: {}".format(self.power_spectra_loss))
         print("# phase : {}".format(self.phase))
         print("# TSNE Embedding real data : {}".format(self.tsne_real_data))
+        print("# only_ux flag : {}".format(self.only_ux))
 
-
+        print("# both_ux_uy flag : {}".format(self.both_ux_uy))
+        
         print("\n\n")
 
     ##################################################################################
@@ -409,7 +416,7 @@ class StyleGAN(object):
         beta = 5.0
         fake_img = self.generator(z, alpha, res)
         # fake_img2 = self.generator(z2, alpha, res)
-        fake_logit = self.discriminator(fake_img, alpha, res)
+        fake_logit, _ = self.discriminator(fake_img, alpha, res)
         fake_grads = tf.gradients(fake_logit, [z])[0]
         delta_z = alpha * fake_grads  / (beta * tf.norm(fake_grads, ord=2))
         return delta_z
@@ -506,7 +513,7 @@ class StyleGAN(object):
 
                                 if(self.climate_data):
                                     
-                                    real_img  = build_input_pipeline(self.dataset, res, batch_size, gpu_device, self.input_channels, None, self.crop_size)
+                                    real_img  = build_input_pipeline(self.dataset, res, batch_size, gpu_device, self.input_channels, None, self.crop_size, only_ux=self.only_ux, both_ux_uy=self.both_ux_uy, custom_cropping_flag=self.custom_cropping_flag )
 
                                 else:
 
@@ -523,7 +530,7 @@ class StyleGAN(object):
                                     real_img = inputs_iterator.get_next()
 
 
-
+                                print("real img shape : {} ".format(real_img.shape))
 
 
                                 ##################################################################################
@@ -552,12 +559,47 @@ class StyleGAN(object):
                                 # real_images_per_gpu.append(real_img)
 
 
-                                real_logit = self.discriminator(real_img, alpha, res)
-                                fake_logit = self.discriminator(fake_img1, alpha, res)
+                                real_logit, _ = self.discriminator(real_img, alpha, res)
+                                fake_logit, _  = self.discriminator(fake_img1, alpha, res)
 
                                 # print("\n\n real_img : {} ".format(real_img.shape))
 
                                 # print(" fake_img : {} \n\n".format(fake_img1.shape))
+
+
+                                    #  real_img : (128, 8, 8, 1)
+                                    #  fake_img : (128, 8, 8, 1)
+
+
+                                    # real img shape : (128, 16, 16, 1)
+
+
+                                    #  real_img : (128, 16, 16, 1)
+                                    #  fake_img : (128, 16, 16, 1)
+
+
+                                    # real img shape : (64, 32, 32, 1)
+
+
+                                    #  real_img : (64, 32, 32, 1)
+                                    #  fake_img : (64, 32, 32, 1)
+
+
+                                    # real img shape : (32, 64, 64, 1)
+
+
+                                    #  real_img : (32, 64, 64, 1)
+                                    #  fake_img : (32, 64, 64, 1)
+
+
+                                    # real img shape : (16, 128, 128, 1
+
+
+                                    #  real_img : (16, 128, 128, 1)
+                                    #  fake_img : (16, 128, 128, 1)
+
+
+                                # NHWC
                                 
                                 d_loss, g_loss, r1_penalty, ms_loss = compute_loss(real_img, real_logit, fake_logit, fake_img1, z1)
                                 d_loss_per_gpu.append(d_loss)
@@ -748,8 +790,19 @@ class StyleGAN(object):
         np.random.shuffle(real_images)
 
         # addding capability for l2 plots with specific channels
-        real_images = real_images[:,:,:, -self.input_channels:]
-        print("real_images shape {}".format(real_images.shape))
+        
+
+        if(self.only_ux):
+            real_images = real_images[:,-3,:,:]
+        elif(self.both_ux_uy):
+            real_images = real_images[:, 4:6,:,:]
+        else:
+            real_images = real_images[:,-self.input_channels,:,:]
+
+
+        # real_images = real_images[:,:,:, -self.input_channels:]
+        
+        print(" Training L2 plots real_images shape {}\n".format(real_images.shape))
         l2_real = []
         for i, img in enumerate(real_images):
             foo = [calculateDistance(img,j) for j in real_images[i+1:]]
@@ -1098,9 +1151,9 @@ class StyleGAN(object):
         trial = 0
 
         if(self.tsne_real_data):
-            word = "_real_data_" 
+            word = "real_data_" 
         else:
-            word = "_fake_data_"
+            word = "fake_data_"
 
         save_file_path = str(result_dir) + "{}discriminator_{}_embedding_file_{}.npy".format(word, checkpoint_counter, trial)
         while(os.path.isfile(save_file_path)):
@@ -1141,6 +1194,7 @@ class StyleGAN(object):
         generated_image = []
         saved_seeds = []
 
+        print("-----> self batch size {} \n self. z dim {}\n".format(self.batch_size, self.z_dim))
         Data = {}
         for i in tqdm(range(self.test_num)):
 
@@ -1157,7 +1211,7 @@ class StyleGAN(object):
 
         generated_images = np.concatenate( generated_image, axis=0 )
         seeds = np.asarray(saved_seeds)
-        
+        print("\n\n %%%%%%%%%%%%%%%%\n  generated_images shape :  {} \n\n %%%%%%%%%%%%%%%%\n".format(generated_images.shape))
         Data["generated_images"] = generated_images
         Data["seeds"] = seeds
 

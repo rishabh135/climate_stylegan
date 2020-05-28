@@ -1,6 +1,13 @@
 import tensorflow as tf
 import numpy as np
 
+
+from random import seed
+from random import randint
+# seed random number generator
+seed(1)
+
+
 def npy_header_offset(npy_path):
     with open(str(npy_path), 'rb') as f:
         if f.read(6) != b'\x93NUMPY':
@@ -47,9 +54,22 @@ def list_slice(tensor, indices, axis):
     return tf.concat(slices, axis=axis)
 
 
-def parse_fn(img, res, input_channels, img_size, dtype, channels_list, crop_size):
+def parse_fn(img, res, input_channels, img_size, dtype, channels_list, crop_size, only_ux, both_ux_uy, custom_cropping_flag):
     img = tf.decode_raw(img, dtype)
-    img = tf.reshape(img, [-1, img_size, img_size])
+    img = tf.reshape(img, [img_size, img_size, -1]) 
+
+    offset_height=crop_size
+    offset_width = randint(0, 3*crop_size)
+
+    target_height = crop_size
+    target_width = crop_size
+
+
+
+    if(custom_cropping_flag == True):
+        img = tf.image.crop_to_bounding_box(img, offset_height, offset_width, target_height, target_width)
+
+
 
     """
     To crop a image randomly from the given dataset of shape 512
@@ -57,15 +77,20 @@ def parse_fn(img, res, input_channels, img_size, dtype, channels_list, crop_size
     """
     # img  = tf.random_crop(img, size=(input_channels, crop_size, crop_size))
     
-    img = tf.transpose(img, perm=[1,2,0])
+    # img = tf.transpose(img, perm=[1,2,0])
     img = tf.image.resize(img, size=[res, res], method=tf.image.ResizeMethod.BILINEAR)
-    img = img[:,:,channels_list]
+    if(only_ux):
+        img = img[:,:,4:5]
+    elif(both_ux_uy):
+        img = img[:,:,4:6]
+    else:
+        img = img[:,:,-input_channels:]
     # if(channels_list != None):
     #     img = list_slice(img, channels_list, 2)
     
     return img
 
-def build_input_pipeline(filelist, res, batch_size, gpu_device, input_channels, channels_list, crop_size, repeat_flag=True):
+def build_input_pipeline(filelist, res, batch_size, gpu_device, input_channels, channels_list, crop_size, only_ux=False, both_ux_uy=False, repeat_flag=True, custom_cropping_flag=False):
 
     with tf.device('/cpu:0'):
         npy_file = filelist[0]
@@ -76,7 +101,7 @@ def build_input_pipeline(filelist, res, batch_size, gpu_device, input_channels, 
 
         dataset = tf.data.FixedLengthRecordDataset(filelist,num_features*dtype.size, header_bytes=header_offset)
         
-        dataset = dataset.map(lambda img: parse_fn(img, res, input_channels, shape[1], dtype, channels_list, crop_size),
+        dataset = dataset.map(lambda img: parse_fn(img, res, input_channels, shape[1], dtype, channels_list, crop_size, only_ux, both_ux_uy, custom_cropping_flag),
                                                     num_parallel_calls=4)
 
         if(repeat_flag):

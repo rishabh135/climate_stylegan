@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import matplotlib as mpl
 mpl.use('Agg')
+mpl.rcParams['agg.path.chunksize'] = 10000
 import matplotlib.pyplot as plt
 from comet_ml import Experiment
 from comet_ml import OfflineExperiment
@@ -83,7 +84,17 @@ def parse_args():
                         help='discriminator_tsne embedding for real data, default is false')
 
 
+    parser.add_argument('--only_ux', type=bool, default= False,
+                        help='only ux for training, default is false')
 
+    parser.add_argument('--both_ux_uy', type=bool, default= False,
+                        help='both ux and uy for training, default is false')
+
+
+    parser.add_argument('--custom_cropping_flag', type=bool, default= False,
+                        help='should i crop input images across the equator with y axis fixed and x axis varied')
+
+    
     return check_args(parser.parse_args())
 
 

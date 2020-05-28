@@ -4,7 +4,7 @@
 #SBATCH -C gpu
 #SBATCH -A dasrepo
 #SBATCH --gres=gpu:8
-#SBATCH -t 03:59:00 
+#SBATCH -t 07:59:00 
 
 module load esslurm
 module load cuda/10.0.130
@@ -20,11 +20,11 @@ module load tensorflow/gpu-1.13.1-py36
 
 #run the application:
 python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 --input_channels 1 --start_res 8 \
-	--img_size 128 --crop_size 128 --gpu_num 8 --progressive True --phase train  --only_ux True\
-	--checkpoint_dir ./stored_outputs/wo_norm_128_crop_one_channel_ux/checkpoint --result_dir ./stored_outputs/wo_norm_128_crop_one_channel_ux/result \
-	--log_dir ./stored_outputs/wo_norm_128_crop_one_channel_ux/log --sample_dir ./stored_outputs/wo_norm_128_crop_one_channel_ux/sample \
+	--img_size 128 --crop_size 128 --gpu_num 1 --progressive True --phase train \
+	--checkpoint_dir ./stored_outputs/1_channel_logan_noise_wo_norm_128_omega/checkpoint --result_dir ./stored_outputs/1_channel_logan_noise_wo_norm_128_omega/result \
+	--log_dir ./stored_outputs/1_channel_logan_noise_wo_norm_128_omega/log --sample_dir ./stored_outputs/1_channel_logan_noise_wo_norm_128_omega/sample \
 	--dataset_location /project/projectdirs/dasrepo/mustafa/data/climate/sims/unnormalized \
-	--name_experiment "Brand new Ux alone 128 without normalization on a single channel"
+	--name_experiment "1_channel_logan_noise_wo_norm_128_omega_single_channel"
  
 
 
