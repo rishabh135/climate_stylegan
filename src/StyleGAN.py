@@ -3,9 +3,16 @@ from ops import *
 from utils import *
 import tensorflow
 tensorflow.get_logger().setLevel('INFO')
+from random import seed
+from random import randint
+# seed random number generator
+seed(1)
+import math
+
 
 from tensorflow.contrib.data import prefetch_to_device, shuffle_and_repeat, map_and_batch
 import numpy as np
+np.seterr(divide='ignore', invalid='ignore')
 import PIL.Image
 from tqdm import tqdm
 from data_pipeline import build_input_pipeline
@@ -76,7 +83,7 @@ class StyleGAN(object):
         self.only_ux = args.only_ux
         self.both_ux_uy = args.both_ux_uy
         self.custom_cropping_flag = args.custom_cropping_flag
-
+        self.decay_logan = args.decay_logan
 
         self.z_dim = 512
         self.w_dim = 512
@@ -183,6 +190,7 @@ class StyleGAN(object):
 
         print("# both_ux_uy flag : {}".format(self.both_ux_uy))
         
+        print("# decay logan : {}".format(self.decay_logan))
         print("\n\n")
 
     ##################################################################################
@@ -414,6 +422,36 @@ class StyleGAN(object):
     def gradient_over_latent(self, z, alpha, res):
         alpha = 0.9
         beta = 5.0
+
+
+
+        if(self.decay_logan == True):
+
+
+
+
+            #####################################################################################################################
+            #####################################################################################################################
+            #####################################################################################################################
+            # Annealing Logan alpha by 0.05 every 1000 steps
+            #####################################################################################################################
+            #####################################################################################################################
+            #####################################################################################################################
+
+            # decay_steps = 1000
+
+            # cosine_decay = 0.5 * (1 + math.cos(math.pi * self.global_step%decay_steps))
+            # decayed = (1 - alpha_decay) * cosine_decay + alpha_decay
+            # alpha = alpha * decayed
+            alpha = tf.train.cosine_decay(alpha, self.global_step, decay_steps=5000, alpha=0.9, name=None)
+
+            # global_step = min(global_step, decay_steps)
+            # cosine_decay = 0.5 * (1 + cos(pi * global_step / decay_steps))
+            # decayed = (1 - alpha) * cosine_decay + alpha
+            # decayed_learning_rate = learning_rate * decayed
+
+
+
         fake_img = self.generator(z, alpha, res)
         # fake_img2 = self.generator(z2, alpha, res)
         fake_logit, _ = self.discriminator(fake_img, alpha, res)
@@ -484,10 +522,10 @@ class StyleGAN(object):
                 #  Divide by 2 to work on mode_seeking_loss
                 batch_size = self.batch_sizes.get(res, self.batch_size_base)
 
-                global_step = tf.get_variable('global_step_{}'.format(res), shape=[], dtype=tf.float32,
+                self.global_step = tf.get_variable('global_step_{}'.format(res), shape=[], dtype=tf.float32,
                                               initializer=tf.initializers.zeros(),
                                               trainable=False, aggregation=tf.VariableAggregation.ONLY_FIRST_TOWER)
-                alpha_const, zero_constant = get_alpha_const(self.iteration // 2, batch_size * self.gpu_num, global_step)
+                alpha_const, zero_constant = get_alpha_const(self.iteration // 2, batch_size * self.gpu_num, self.global_step)
 
                 # smooth transition variable
                 do_train_trans = self.train_with_trans[res]
@@ -513,7 +551,7 @@ class StyleGAN(object):
 
                                 if(self.climate_data):
                                     
-                                    real_img  = build_input_pipeline(self.dataset, res, batch_size, gpu_device, self.input_channels, None, self.crop_size, only_ux=self.only_ux, both_ux_uy=self.both_ux_uy, custom_cropping_flag=self.custom_cropping_flag )
+                                    real_img  = build_input_pipeline(self.dataset, res, batch_size, gpu_device, self.input_channels, None, self.crop_size, only_ux=self.only_ux, both_ux_uy=self.both_ux_uy, custom_cropping_flag=self.custom_cropping_flag, climate_img_size= self.climate_img_size )
 
                                 else:
 
@@ -678,7 +716,7 @@ class StyleGAN(object):
                 d_optim = tf.train.AdamOptimizer(d_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(d_loss,var_list=d_vars,colocate_gradients_with_ops=colocate_grad)
 
 
-                g_optim = tf.train.AdamOptimizer(g_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(g_loss,var_list=g_vars,global_step=global_step,colocate_gradients_with_ops=colocate_grad)
+                g_optim = tf.train.AdamOptimizer(g_lr, beta1=0.0, beta2=0.99, epsilon=1e-8).minimize(g_loss,var_list=g_vars,global_step=self.global_step,colocate_gradients_with_ops=colocate_grad)
 
 
 
@@ -852,8 +890,16 @@ class StyleGAN(object):
         elif(self.both_ux_uy):
             real_images = real_images[:, 4:6,:,:]
         else:
-            real_images = real_images[:,-self.input_channels,:,:]
+            real_images = real_images[:,-self.input_channels:,:,:]
 
+
+        print(" Training L2 plots real_images shape {}\n".format(real_images.shape))
+
+        offset_width = randint(0, self.climate_img_size- self.crop_size-1)
+        print("\n  x1 {}  x2  {}  y1  {}  y2 {}\n\n".format(offset_width, offset_width +self.crop_size, (self.climate_img_size - self.crop_size)/2 , (self.climate_img_size - self.crop_size)/2 + self.crop_size))
+        
+        if(self.custom_cropping_flag == True):
+            real_images = real_images[:, :, offset_width : offset_width +self.crop_size , (self.climate_img_size - self.crop_size)//2 : (self.climate_img_size - self.crop_size)//2 + self.crop_size]
 
         # real_images = real_images[:,:,:, -self.input_channels:]
         

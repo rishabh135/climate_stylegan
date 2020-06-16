@@ -1,5 +1,3 @@
-
-
 from websocket import create_connection
 
 ws = create_connection("wss://www.comet.ml/ws/logger-ws")
@@ -17,5 +15,3 @@ result =  ws.recv()
 print("Received '%s'" % result)
 
 ws.close()
-
-

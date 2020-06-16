@@ -21,12 +21,15 @@ module load tensorflow/gpu-1.13.1-py36
 #run the application:
 python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 \
 	--input_channels 1 --start_res 8 \
-	--img_size 128 --gpu_num 4 --progressive False --phase train \
-	--checkpoint_dir ./stored_outputs/wo_norm_128_2/checkpoint \
-	--result_dir ./stored_outputs/wo_norm_128_2/result \
-	--log_dir ./stored_outputs/wo_norm_128_2/log \
-	--sample_dir ./stored_outputs/wo_norm_128_2/sample \
+	--img_size 128 --crop_size 128 --gpu_num 2 --progressive False --phase train \
+	--custom_cropping_flag True --decay_logan True \
+	--checkpoint_dir ./stored_outputs/custom_cropping_logan_annealed_omega_128/checkpoint \
+	--result_dir ./stored_outputs/custom_cropping_logan_annealed_omega_128/result \
+	--log_dir ./stored_outputs/custom_cropping_logan_annealed_omega_128/log \
+	--sample_dir ./stored_outputs/custom_cropping_logan_annealed_omega_128/sample \
 	--dataset_location /global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_original/ \
-	--name_experiment "wo_norm_climate data at 128 new_ver"
+	--name_experiment "[SGAN1  Annealed logan Omega 128 with custom cropping] wo_norm_climate data at 128 new_version"
  
+
+
 

@@ -92,9 +92,12 @@ def parse_args():
 
 
     parser.add_argument('--custom_cropping_flag', type=bool, default= False,
-                        help='should i crop input images across the equator with y axis fixed and x axis varied')
+                        help='cropping input images across the equator with y axis fixed and x axis varied')
 
     
+    parser.add_argument('--decay_logan', type=bool, default= False,
+                        help='annealing of logan for better tail fit')
+
     return check_args(parser.parse_args())
 
 
@@ -111,7 +114,7 @@ def check_args(args):
     # experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa", project_name="{}_{}".format("logan_climategan_norm_chanel_", args.input_channels), workspace="style-gan")
 
 
-    experiment = Experiment(api_key="lsfFN2N0VlRIMOwAg9rmJ2SAf", project_name="{}_{}".format("logan_climategan_norm_chanel_", args.input_channels), workspace="style-gan")
+    experiment = Experiment(api_key="lsfFN2N0VlRIMOwAg9rmJ2SAf", project_name="{}_{}".format("custom_cropping_logan_annealed_omega_128_channels_", args.input_channels), workspace="style-gan")
 
 
 
