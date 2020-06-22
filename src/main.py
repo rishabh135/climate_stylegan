@@ -98,6 +98,11 @@ def parse_args():
     parser.add_argument('--decay_logan', type=bool, default= False,
                         help='annealing of logan for better tail fit')
 
+
+    parser.add_argument('--feature_matching_loss', type=bool, default= False,
+                        help='whether to use feature matching loss from Improving GAN paper by Tim Salimans')
+
+    
     return check_args(parser.parse_args())
 
 
@@ -114,7 +119,7 @@ def check_args(args):
     # experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa", project_name="{}_{}".format("logan_climategan_norm_chanel_", args.input_channels), workspace="style-gan")
 
 
-    experiment = Experiment(api_key="lsfFN2N0VlRIMOwAg9rmJ2SAf", project_name="{}_{}".format("custom_cropping_logan_annealed_omega_128_channels_", args.input_channels), workspace="style-gan")
+    experiment = Experiment(api_key="lsfFN2N0VlRIMOwAg9rmJ2SAf", project_name="{}_{}".format(args.name_experiment, args.input_channels), workspace="style-gan")
 
 
 

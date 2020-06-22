@@ -122,7 +122,7 @@ def instance_norm(x, epsilon=1e-8):
 # StyleGAN trick function
 ##################################################################################
 
-def compute_loss(real_images, real_logit, fake_logit, fake_img1, z1, fake_img2=None, z2=None):
+def compute_loss(real_images, real_logit, fake_logit, fake_img1, z1, D_real_features, D_fake_features, feature_matching_loss=False, fake_img2=None, z2=None):
     r1_gamma, r2_gamma = 10.0, 0.0
 
     # discriminator loss: gradient penalty
@@ -133,6 +133,9 @@ def compute_loss(real_images, real_logit, fake_logit, fake_img1, z1, fake_img2=N
     # r1_penalty = tf.reduce_mean(r1_penalty)
     d_loss = d_loss_gan + r1_penalty * (r1_gamma * 3)
     d_loss = tf.reduce_mean(d_loss)
+
+
+
 
 
     # l1_norm_images = tf.abs()
@@ -154,7 +157,28 @@ def compute_loss(real_images, real_logit, fake_logit, fake_img1, z1, fake_img2=N
     # + mode_seeking_loss
     g_loss = tf.reduce_mean(g_loss)
 
-    return d_loss, g_loss, r1_penalty, mode_seeking_loss
+
+
+
+    #################################################################################
+    #################################################################################
+    #################################################################################
+    #  feature matching loss as illustrated in paper by Tim Salimans et al
+    #
+    #################################################################################
+    #################################################################################
+    #################################################################################
+
+
+    # G_L_2 -> Feature matching
+
+    if(feature_matching_loss == True):
+        data_moments = tf.reduce_mean(D_real_features, axis = 0)
+        sample_moments = tf.reduce_mean(D_fake_features, axis = 0)
+        fml = tf.reduce_mean(tf.square(data_moments-sample_moments))
+        g_loss += fml
+
+    return d_loss, g_loss, r1_penalty, mode_seeking_loss, fml
 
 def lerp(a, b, t):
     # t == 1.0: use b

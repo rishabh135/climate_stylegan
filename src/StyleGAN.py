@@ -84,6 +84,7 @@ class StyleGAN(object):
         self.both_ux_uy = args.both_ux_uy
         self.custom_cropping_flag = args.custom_cropping_flag
         self.decay_logan = args.decay_logan
+        self.feature_matching_loss = args.feature_matching_loss
 
         self.z_dim = 512
         self.w_dim = 512
@@ -443,8 +444,9 @@ class StyleGAN(object):
             # cosine_decay = 0.5 * (1 + math.cos(math.pi * self.global_step%decay_steps))
             # decayed = (1 - alpha_decay) * cosine_decay + alpha_decay
             # alpha = alpha * decayed
-            alpha = tf.train.cosine_decay(alpha, self.global_step, decay_steps=5000, alpha=0.9, name=None)
 
+            # alpha = tf.train.cosine_decay(alpha, self.global_step, decay_steps=1000, alpha=0.9, name=None)
+            alpha =tf.compat.v1.train.exponential_decay( alpha, self.global_step, decay_steps=1000, decay_rate=0.95, staircase=True) 
             # global_step = min(global_step, decay_steps)
             # cosine_decay = 0.5 * (1 + cos(pi * global_step / decay_steps))
             # decayed = (1 - alpha) * cosine_decay + alpha
@@ -480,6 +482,7 @@ class StyleGAN(object):
 
             self.r1_penalty = {}
             self.ms_loss = {}
+            self.fml_loss = {}
 
             self.generator_optim = {}
             self.discriminator_optim = {}
@@ -514,6 +517,7 @@ class StyleGAN(object):
 
                 r1_penalty_list = []
                 ms_loss_list = []
+                fml_list = []
 
                 if self.power_spectra_loss:
                     ps_loss_per_gpu = []
@@ -597,8 +601,8 @@ class StyleGAN(object):
                                 # real_images_per_gpu.append(real_img)
 
 
-                                real_logit, _ = self.discriminator(real_img, alpha, res)
-                                fake_logit, _  = self.discriminator(fake_img1, alpha, res)
+                                real_logit, D_real_features = self.discriminator(real_img, alpha, res)
+                                fake_logit, D_fake_features  = self.discriminator(fake_img1, alpha, res)
 
                                 # print("\n\n real_img : {} ".format(real_img.shape))
 
@@ -639,11 +643,12 @@ class StyleGAN(object):
 
                                 # NHWC
                                 
-                                d_loss, g_loss, r1_penalty, ms_loss = compute_loss(real_img, real_logit, fake_logit, fake_img1, z1)
+                                d_loss, g_loss, r1_penalty, ms_loss, fml = compute_loss(real_img, real_logit, fake_logit, fake_img1, z1, D_real_features, D_fake_features, feature_matching_loss= self.feature_matching_loss)
                                 d_loss_per_gpu.append(d_loss)
                                 g_loss_per_gpu.append(g_loss)
                                 r1_penalty_list.append(r1_penalty)
                                 ms_loss_list.append(ms_loss)
+                                fml_list.append(fml)
                                 
 
 
@@ -674,6 +679,8 @@ class StyleGAN(object):
 
 
                 self.r1_penalty[res] = tf.reduce_mean(r1_penalty_list)
+
+                self.fml_loss[res] = tf.reduce_mean(fml)
                 # self.ms_loss[res] = tf.reduce_mean(ms_loss_list)
 
 
@@ -1011,15 +1018,12 @@ class StyleGAN(object):
 
 
                 if self.power_spectra_loss:
-                    r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res] ])
-                    r1_loss, alpha, ps_loss = self.sess.run([self.r1_penalty[current_res],
-                    self.alpha_stored_per_res[current_res],
-                    self.ps_loss_per_res[current_res]])
+                    # r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res] ])
+                    r1_loss, alpha, ps_loss, fml_loss = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res], self.ps_loss_per_res[current_res], self.fml_loss[current_res] ])
 
                 else:
-                    r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],
-                    self.alpha_stored_per_res[current_res]])
-                    r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res] ])
+                    r1_loss, alpha, fml_loss = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res], self.fml_loss[current_res]])
+                    # r1_loss, alpha = self.sess.run([self.r1_penalty[current_res],self.alpha_stored_per_res[current_res] ])
 
 
                 self.writer.add_summary(summary_g_per_res, idx)
@@ -1050,6 +1054,8 @@ class StyleGAN(object):
                 self.experiment.log_metric("d_loss",d_loss,step=counter)
                 self.experiment.log_metric("g_loss",g_loss,step=counter)
                 self.experiment.log_metric("r1_penalty", r1_loss,step=counter)
+
+                self.experiment.log_metric("feature_matching_loss", fml_loss, step=counter)
                 # self.experiment.log_metric("ms_loss", ms_loss, step=counter)
                 
                 self.experiment.log_metric("alpha value ", alpha, step=counter)
