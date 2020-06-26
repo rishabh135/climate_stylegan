@@ -54,14 +54,19 @@ def list_slice(tensor, indices, axis):
     return tf.concat(slices, axis=axis)
 
 
-def parse_fn(img, res, input_channels, img_size, dtype, channels_list, crop_size, only_ux, both_ux_uy, custom_cropping_flag, climate_img_size):
+def parse_fn(img, res, input_channels, img_size, dtype, channels_list, crop_size, only_ux, both_ux_uy, custom_cropping_flag, climate_img_size, fixed_offset):
     img = tf.decode_raw(img, dtype)
     img = tf.reshape(img, [img_size, img_size, -1]) 
 
 
     print(" original image size : {} crop size {} ".format(img.shape, crop_size ))
     offset_height= (climate_img_size-crop_size)//2
-    offset_width = randint(0, climate_img_size- crop_size-1)
+
+    if(fixed_offset > 0):
+        offset_width = fixed_offset
+
+    else:
+        offset_width = randint(0, climate_img_size- crop_size-1)
 
     target_height = crop_size
     target_width = crop_size
@@ -94,7 +99,7 @@ def parse_fn(img, res, input_channels, img_size, dtype, channels_list, crop_size
     
     return img
 
-def build_input_pipeline(filelist, res, batch_size, gpu_device, input_channels, channels_list, crop_size, only_ux=False, both_ux_uy=False, repeat_flag=True, custom_cropping_flag=False, climate_img_size=512):
+def build_input_pipeline(filelist, res, batch_size, gpu_device, input_channels, channels_list, crop_size, only_ux=False, both_ux_uy=False, repeat_flag=True, custom_cropping_flag=False, climate_img_size=512, fixed_offset = -1):
 
     with tf.device('/cpu:0'):
         npy_file = filelist[0]
@@ -105,7 +110,7 @@ def build_input_pipeline(filelist, res, batch_size, gpu_device, input_channels, 
 
         dataset = tf.data.FixedLengthRecordDataset(filelist,num_features*dtype.size, header_bytes=header_offset)
         
-        dataset = dataset.map(lambda img: parse_fn(img, res, input_channels, shape[1], dtype, channels_list, crop_size, only_ux, both_ux_uy, custom_cropping_flag, climate_img_size),
+        dataset = dataset.map(lambda img: parse_fn(img, res, input_channels, shape[1], dtype, channels_list, crop_size, only_ux, both_ux_uy, custom_cropping_flag, climate_img_size, fixed_offset),
                                                     num_parallel_calls=4)
 
         if(repeat_flag):

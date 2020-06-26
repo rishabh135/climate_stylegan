@@ -85,6 +85,7 @@ class StyleGAN(object):
         self.custom_cropping_flag = args.custom_cropping_flag
         self.decay_logan = args.decay_logan
         self.feature_matching_loss = args.feature_matching_loss
+        self.fixed_offset = args.fixed_offset
 
         self.z_dim = 512
         self.w_dim = 512
@@ -555,7 +556,7 @@ class StyleGAN(object):
 
                                 if(self.climate_data):
                                     
-                                    real_img  = build_input_pipeline(self.dataset, res, batch_size, gpu_device, self.input_channels, None, self.crop_size, only_ux=self.only_ux, both_ux_uy=self.both_ux_uy, custom_cropping_flag=self.custom_cropping_flag, climate_img_size= self.climate_img_size )
+                                    real_img  = build_input_pipeline(self.dataset, res, batch_size, gpu_device, self.input_channels, None, self.crop_size, only_ux=self.only_ux, both_ux_uy=self.both_ux_uy, custom_cropping_flag=self.custom_cropping_flag, climate_img_size= self.climate_img_size, fixed_offset = self.fixed_offset)
 
                                 else:
 
@@ -902,10 +903,14 @@ class StyleGAN(object):
 
         print(" Training L2 plots real_images shape {}\n".format(real_images.shape))
 
-        offset_width = randint(0, self.climate_img_size- self.crop_size-1)
-        print("\n  x1 {}  x2  {}  y1  {}  y2 {}\n\n".format(offset_width, offset_width +self.crop_size, (self.climate_img_size - self.crop_size)/2 , (self.climate_img_size - self.crop_size)/2 + self.crop_size))
-        
         if(self.custom_cropping_flag == True):
+
+            if(self.fixed_offset > 0):
+                offset_width = self.fixed_offset
+            
+            else:
+                offset_width = randint(0, self.climate_img_size- self.crop_size-1)
+            
             real_images = real_images[:, :, offset_width : offset_width +self.crop_size , (self.climate_img_size - self.crop_size)//2 : (self.climate_img_size - self.crop_size)//2 + self.crop_size]
 
         # real_images = real_images[:,:,:, -self.input_channels:]

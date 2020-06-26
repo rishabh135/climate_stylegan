@@ -94,6 +94,9 @@ def parse_args():
     parser.add_argument('--custom_cropping_flag', type=bool, default= False,
                         help='cropping input images across the equator with y axis fixed and x axis varied')
 
+    parser.add_argument('--fixed_offset', type=int, default= -1,
+                        help='default value to be used for custom cropping between 0 and 383 pixels or will select randomly')
+
     
     parser.add_argument('--decay_logan', type=bool, default= False,
                         help='annealing of logan for better tail fit')

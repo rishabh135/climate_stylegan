@@ -30,7 +30,7 @@ module load tensorflow/gpu-1.13.1-py36
 
 # 131718
 
-#run the application:
+# #run the application:
 python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 --input_channels 2 --start_res 8 --test_num 50 --inference_counter_number 216718 \
 	--img_size 128 --gpu_num 1 --progressive True --phase test \
 	--checkpoint_dir ./stored_outputs/2_channel_logan_wo_norm_128_crop_ux_uy/checkpoint --result_dir ./stored_outputs/2_channel_logan_wo_norm_128_crop_ux_uy/result \
@@ -38,5 +38,23 @@ python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --datas
 	--dataset_location /project/projectdirs/dasrepo/mustafa/data/climate/sims/unnormalized \
 	--name_experiment " generating Ux and Uy together at 128 without normalization at generator 216718"
  
+
+
+
+
+# #run the application:
+# python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 \
+# 	--input_channels 1 --start_res 8 \
+# 	--test_num 50 --inference_counter_number 216718  --phase test \
+# 	--img_size 128 --crop_size 128 --gpu_num 2 --progressive False \
+# 	--custom_cropping_flag True --decay_logan True  --feature_matching_loss True \
+# 	--checkpoint_dir ./stored_outputs/feature_matching_step_annealing_custom_cropping_logan_annealed_omega_128/checkpoint \
+# 	--result_dir ./stored_outputs/feature_matching_step_annealing_custom_cropping_logan_annealed_omega_128/result \
+# 	--log_dir ./stored_outputs/feature_matching_step_annealing_custom_cropping_logan_annealed_omega_128/log \
+# 	--sample_dir ./stored_outputs/feature_matching_step_annealing_custom_cropping_logan_annealed_omega_128/sample \
+# 	--dataset_location /global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_original/ \
+# 	--name_experiment "[Inference : SGAN1 Feature matching step-annealed logan Omega 128 with custom cropping] wo_norm_climate data at 128 new_version"
+ 
+
 
 
