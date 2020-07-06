@@ -171,11 +171,11 @@ def compute_loss(real_images, real_logit, fake_logit, fake_img1, z1, D_real_feat
 
 
     # G_L_2 -> Feature matching
-
+    fml = 0
     if(feature_matching_loss == True):
         data_moments = tf.reduce_mean(D_real_features, axis = 0)
         sample_moments = tf.reduce_mean(D_fake_features, axis = 0)
-        fml = tf.reduce_mean(tf.square(data_moments-sample_moments))
+        fml += tf.reduce_mean(tf.square(data_moments-sample_moments))
         g_loss += fml
 
     return d_loss, g_loss, r1_penalty, mode_seeking_loss, fml
@@ -665,6 +665,37 @@ def featuremap_list(img_size) :
             fix_num += 1
 
     return x
+
+# def get_batch_sizes(gpu_num) :
+
+#     # batch size for each gpu
+
+#     if gpu_num == 1 :
+#         x = OrderedDict([(4, 128), (8, 128), (16, 128), (32, 64), (64, 32), (128, 16), (256, 8), (512, 4), (1024, 4)])
+
+#     elif gpu_num == 2 or gpu_num == 3 :
+#         # x = OrderedDict([(4, 128), (8, 128), (16, 64), (32, 32), (64, 16), (128, 8), (256, 4), (512, 4), (1024, 4)])
+#         x = OrderedDict([(4, 512), (8, 512), (16, 256), (32, 128), (64, 64), (128, 32), (256, 16), (512, 16), (1024, 16)])
+
+#     elif gpu_num == 4 or gpu_num == 5 or gpu_num == 6 :
+#         # x = OrderedDict([(4, 128), (8, 64), (16, 32), (32, 16), (64, 8), (128, 4), (256, 4), (512, 4), (1024, 4)])
+#         x = OrderedDict([(4, 256), (8, 128), (16, 64), (32, 32), (64, 16), (128, 8), (256, 8), (512, 8), (1024, 8)])
+
+#     elif gpu_num == 7 or gpu_num == 8 or gpu_num == 9 :
+#         # x = OrderedDict([(4, 64), (8, 32), (16, 16), (32, 8), (64, 4), (128, 4), (256, 4), (512, 2), (1024, 2)])
+#         x = OrderedDict([(4, 128), (8, 64), (16, 32), (32, 16), (64, 8), (128, 8), (256, 8), (512, 4), (1024, 4)])
+
+#     else : # >= 10
+#         x = OrderedDict([(4, 32), (8, 16), (16, 8), (32, 4), (64, 2), (128, 2), (256, 2), (512, 2), (1024, 2)])
+
+#     return x
+
+
+
+
+
+
+
 
 def get_batch_sizes(gpu_num) :
 

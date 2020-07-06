@@ -98,11 +98,14 @@ def parse_args():
                         help='default value to be used for custom cropping between 0 and 383 pixels or will select randomly')
 
     
-    parser.add_argument('--decay_logan', type=bool, default= False,
+    parser.add_argument('--decay_logan', type=bool, default= True,
                         help='annealing of logan for better tail fit')
 
+    parser.add_argument('--logan_flag', type=bool, default= True,
+                        help='whether to train without logan')
+    
 
-    parser.add_argument('--feature_matching_loss', type=bool, default= False,
+    parser.add_argument('--feature_matching_loss', type=bool, default= True,
                         help='whether to use feature matching loss from Improving GAN paper by Tim Salimans')
 
     
@@ -127,7 +130,7 @@ def check_args(args):
 
 
 
-    # experiment = OfflineExperiment(project_name="{}_{}".format("logan_climategan_wo_norm_", args.input_channels), workspace="style-gan" ,offline_directory="./comet_ml_offline_experiments/logan/")
+    # experiment = OfflineExperiment(project_name="{}_{}".format("args.name_experiment", args.input_channels), workspace="style-gan" ,offline_directory="./comet_ml_offline_experiments/feature_matching_step_annealed_logan/")
 
 
     hyper_params = vars(args)

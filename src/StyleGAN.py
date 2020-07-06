@@ -86,6 +86,7 @@ class StyleGAN(object):
         self.decay_logan = args.decay_logan
         self.feature_matching_loss = args.feature_matching_loss
         self.fixed_offset = args.fixed_offset
+        self.logan_flag = args.logan_flag
 
         self.z_dim = 512
         self.w_dim = 512
@@ -192,6 +193,7 @@ class StyleGAN(object):
 
         print("# both_ux_uy flag : {}".format(self.both_ux_uy))
         
+        print("# logan_flag : {}".format(self.logan_flag))
         print("# decay logan : {}".format(self.decay_logan))
         print("\n\n")
 
@@ -581,7 +583,9 @@ class StyleGAN(object):
                                 ##################################################################################
 
                                 z1 = tf.random_normal(shape=[batch_size, self.z_dim])
-                                z1 += self.gradient_over_latent(z1, alpha, res) 
+
+                                if(self.logan_flag == True):
+                                    z1 += self.gradient_over_latent(z1, alpha, res) 
                                 
 
 
@@ -894,7 +898,7 @@ class StyleGAN(object):
         
 
         if(self.only_ux):
-            real_images = real_images[:,-3,:,:]
+            real_images = real_images[:,4:5,:,:]
         elif(self.both_ux_uy):
             real_images = real_images[:, 4:6,:,:]
         else:
