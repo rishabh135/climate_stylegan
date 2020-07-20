@@ -248,8 +248,7 @@ class StyleGAN(object):
 
                 
                     images_out = upscale2d(images_out)
-
-                    
+        
                     images_out = smooth_transition(images_out, img, res, resolutions[-1], alpha)
 
                     
@@ -892,6 +891,7 @@ class StyleGAN(object):
 
 
         real_images = np.load(self.dataset[0])[-self.number_for_l2_images:]
+        print(" real_images shape : {}".format(real_images.shape))
         np.random.shuffle(real_images)
 
         # addding capability for l2 plots with specific channels

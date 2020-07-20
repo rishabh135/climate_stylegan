@@ -19,8 +19,6 @@ t = time.time()
 
 
 
-
-
 def climate_data_wo_norm(save_dir_path, list_of_years): 
 
 
@@ -393,14 +391,233 @@ def climate_data_with_std_norm_4d(save_dir_path, list_of_years):
 
 
 
+
+
+
+
+
+
+
+
+
+def climate_data_wo_norm_4d_npy(save_dir_path, list_of_years):
+
+
+	"""
+
+
+
+	 files found in the current directory for year 1995 = 334
+
+
+	****** data from year 1995  [:, 128:640, 320:832] shape (2672, 1, 512, 512), max 6.6639084815979 min -12.746827125549316 std 0.20175360143184662 mean -0.0011749943951144814 
+
+	 
+	Time taken to complete iteration 4.662921905517578
+
+	 files found in the current directory for year 1996 = 365
+
+
+	****** data from year 1996  [:, 128:640, 320:832] shape (2920, 1, 512, 512), max 9.571378707885742 min -12.924219131469727 std 0.20633453130722046 mean -0.001688328804448247 
+
+	 
+	Time taken to complete iteration 7.624687910079956
+
+	 files found in the current directory for year 1997 = 365
+
+
+	****** data from year 1997  [:, 128:640, 320:832] shape (2920, 1, 512, 512), max 8.109827995300293 min -13.53394603729248 std 0.20219865441322327 mean -0.001156140468083322 
+
+	 
+	Time taken to complete iteration 5.735872507095337
+
+	 files found in the current directory for year 1998 = 257
+
+
+	****** data from year 1998  [:, 128:640, 320:832] shape (2056, 1, 512, 512), max 7.37013053894043 min -11.905616760253906 std 0.20523402094841003 mean -0.0009264641557820141 
+
+	 
+	Time taken to complete iteration 5.970208168029785
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		***** data from year 1996  [:, 128:640, 320:832] shape (2920, 512, 512), max 9.571378707885742 min -12.924219131469727 std 0.20633453130722046 mean -0.001688328804448247
+
+
+		ime taken to complete iteration 35.538962841033936
+
+
+		***** data from year 1997  [:, 128:640, 320:832] shape (2920, 512, 512), max 8.109827995300293 min -13.53394603729248 std 0.20219865441322327 mean -0.001156140468083322
+
+
+		ime taken to complete iteration 35.89456605911255
+
+
+		***** data from year 1998  [:, 128:640, 320:832] shape (2920, 512, 512), max 8.023037910461426 min -12.149008750915527 std 0.20486298203468323 mean -0.0006242241361178458
+
+
+		ime taken to complete iteration 35.77512311935425
+
+
+		***** data from year 1999  [:, 128:640, 320:832] shape (2920, 512, 512), max 7.709518909454346 min -11.99194622039795 std 0.19934770464897156 mean -0.0010409714886918664
+
+
+		ime taken to complete iteration 36.906309604644775
+
+
+		***** data from year 2000  [:, 128:640, 320:832] shape (2920, 512, 512), max 8.345470428466797 min -15.302850723266602 std 0.2007954716682434 mean -0.00103561335708946
+
+
+		slurm-814200.out" 32L, 1256C                                                                                                                                     1,1           Top
+
+
+
+
+
+
+
+
+	"""
+
+
+
+	""" saving omega data as original without any normalization"""
+	t=time.time()
+	for year in list_of_years:
+		
+		load_file_path = "/project/projectdirs/dasrepo/mustafa/data/climate/sims/normalized/normalized_seven_channels_{}.npy".format(year)
+		
+		# files = sorted(glob(load_file_path))
+
+		# print("\n files found in the current directory for year {} = {}".format(year, len(files)))
+		# list_of_omega_data = []    
+		# for _, file in enumerate(files):
+
+		# 	tmp_ds = xr.open_dataset(file, decode_times=False)
+		# 	list_of_omega_data.append( np.expand_dims(tmp_ds["OMEGA500"][:, 128:640, 320:832].values, axis=1))
+
+		tt = time.time()
+	
+
+
+		numpy_array_of_omega = np.load(load_file_path)[: , -1:, :, :]
+		
+
+		print("\n\n****** data from year {}  [:,1, 128:640, 320:832] shape {}, max {} min {} std {} mean {} \n\n ".format(year, numpy_array_of_omega.shape, numpy_array_of_omega.max(), numpy_array_of_omega.min(), numpy_array_of_omega.std(), numpy_array_of_omega.mean() ))
+		
+		save_path = os.path.join(save_dir_path , "climate_data_original/")
+
+		if not os.path.exists(save_path):
+			os.makedirs(save_path)
+
+		np.save( str(save_path) + "{}.npy".format(year), numpy_array_of_omega)
+		print("Time taken to complete iteration", time.time() - tt)
+		
+	
+	return 
+
+
+
 save_dir_path = "/global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/"
-list_of_years = ["1995", "1996", "1997", "1998"]
+list_of_years = ["1996", "1997", "1998"]
 print("Started running the program")
 
 
-climate_data_with_std_norm_4d(save_dir_path, list_of_years)
+# climate_data_with_std_norm_4d(save_dir_path, list_of_years)
 
 # climate_data_wo_norm_4d(save_dir_path, list_of_years)
 
 
+climate_data_wo_norm_4d_npy(save_dir_path, list_of_years)
 
+
+
+
+
+
+
+
+"""
+
+
+
+
+load_file_path = "/project/projectdirs/dasrepo/mustafa/data/climate/sims/unnormalized/seven_channels_{}.npy".format(year)
+
+****** data from year 1996  [:, 1, 128:640, 320:832] shape (2920, 7, 512, 512), max 105821.8125 min -82.63091278076172 std 35349.2109375 mean 14508.9345703125
+
+
+Time taken to complete iteration 50.24332547187805
+
+
+****** data from year 1997  [:, 1, 128:640, 320:832] shape (2920, 7, 512, 512), max 106334.515625 min -80.48070526123047 std 35358.796875 mean 14512.7763671875
+
+
+Time taken to complete iteration 53.00413680076599
+
+
+****** data from year 1998  [:, 1, 128:640, 320:832] shape (2920, 7, 512, 512), max 106354.359375 min -77.23316955566406 std 35359.5703125 mean 14514.5615234375
+
+
+Time taken to complete iteration 56.13152599334717
+
+
+****** data from year 1999  [:, 1, 128:640, 320:832] shape (2920, 7, 512, 512), max 106225.515625 min -66.47136688232422 std 35366.79296875 mean 14517.2666015625
+
+
+Time taken to complete iteration 54.4095184803009
+
+
+****** data from year 2000  [:, 1, 128:640, 320:832] shape (2920, 7, 512, 512), max 106174.21875 min -76.54035949707031 std 35365.5 mean 14517.6044921875
+
+
+Time taken to complete iteration 55.64541745185852
+
+
+
+
+"""

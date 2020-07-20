@@ -695,8 +695,6 @@ def featuremap_list(img_size) :
 
 
 
-
-
 def get_batch_sizes(gpu_num) :
 
     # batch size for each gpu
@@ -718,6 +716,9 @@ def get_batch_sizes(gpu_num) :
         x = OrderedDict([(4, 32), (8, 16), (16, 8), (32, 4), (64, 2), (128, 2), (256, 2), (512, 2), (1024, 2)])
 
     return x
+
+
+
 
 def get_end_iteration(iter, max_iter, do_trans, res_list, start_res) :
 

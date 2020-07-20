@@ -125,12 +125,12 @@ def check_args(args):
     # experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa", project_name="{}_{}".format("logan_climategan_norm_chanel_", args.input_channels), workspace="style-gan")
 
 
-    experiment = Experiment(api_key="lsfFN2N0VlRIMOwAg9rmJ2SAf", project_name="{}_{}".format(args.name_experiment, args.input_channels), workspace="style-gan")
+    # experiment = Experiment(api_key="lsfFN2N0VlRIMOwAg9rmJ2SAf", project_name="{}_{}".format(args.name_experiment, args.input_channels), workspace="style-gan")
 
 
 
 
-    # experiment = OfflineExperiment(project_name="{}_{}".format("args.name_experiment", args.input_channels), workspace="style-gan" ,offline_directory="./comet_ml_offline_experiments/feature_matching_step_annealed_logan/")
+    experiment = OfflineExperiment(project_name="{}_{}".format("args.name_experiment", args.input_channels), workspace="style-gan" ,offline_directory="./comet_ml_offline_experiments/feature_matching_step_annealed_logan/")
 
 
     hyper_params = vars(args)
