@@ -12,7 +12,7 @@ import argparse
 from utils import *
 
 
-
+import wandb as experiment
 
 
 """parsing and configuration"""
@@ -125,16 +125,16 @@ def check_args(args):
     # experiment = Experiment(api_key="YC7c0hMcGsJyRRjD98waGBcVa", project_name="{}_{}".format("logan_climategan_norm_chanel_", args.input_channels), workspace="style-gan")
 
 
-    # experiment = Experiment(api_key="lsfFN2N0VlRIMOwAg9rmJ2SAf", project_name="{}_{}".format(args.name_experiment, args.input_channels), workspace="style-gan")
+    # experiment = Experiment(api_key="lsfFN2N0VlRIMOwAg9rmJ2SAf", project_name="{}".format(args.name_experiment), workspace="style-gan")
 
 
 
 
-    experiment = OfflineExperiment(project_name="{}_{}".format("args.name_experiment", args.input_channels), workspace="style-gan" ,offline_directory="./comet_ml_offline_experiments/feature_matching_step_annealed_logan/")
+    # experiment = OfflineExperiment(project_name="{}_{}".format("args.name_experiment", args.input_channels), workspace="style-gan" ,offline_directory="./comet_ml_offline_experiments/feature_matching_step_annealed_logan/")
 
 
-    hyper_params = vars(args)
-    experiment.log_parameters(hyper_params)
+
+
     # --checkpoint_dir
     check_folder(args.checkpoint_dir)
 
@@ -160,53 +160,61 @@ def main():
     # parse arguments
     args, experiment = parse_args()
 
+
+    hyper_params = vars(args)
+    # experiment.config(hyper_params)
+
+    experiment.init(project="stylegan-v1-tf", name=args.name_experiment, dir="/global/cscratch1/sd/rgupta2/backup/climate_stylegan/wandb_data/", resume=True, config= hyper_params )
+
+
+
     if args is None:
         exit()
 
-    experiment.set_name(args.name_experiment)
+    # experiment.set_name(args.name_experiment)
     # open session
     # Assume that you have 12GB of GPU memory and want to allocate ~4GB:
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.99, allow_growth = True)
 
     with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
-        with experiment.train():
-            gan = StyleGAN(sess, args, experiment)
+        # with experiment.train():
+        gan = StyleGAN(sess, args, experiment)
 
-            # build graph
-            gan.build_model()
+        # build graph
+        gan.build_model()
 
-            # show network architecture
-            show_all_variables()
+        # show network architecture
+        show_all_variables()
 
-            # experiment.set_model_graph(sess.graph)
+        # experiment.set_model_graph(sess.graph)
 
-            if args.phase == 'train' :
-                # launch the graph in a session
-                gan.train()
-                print(" [*] Training finished!")
+        if args.phase == 'train' :
+            # launch the graph in a session
+            gan.train()
+            print(" [*] Training finished!")
 
-            if args.phase == 'test' :
-                gan.test()
-                print(" [*] Test finished!")
+        if args.phase == 'test' :
+            gan.test()
+            print(" [*] Test finished!")
 
 
-            if args.phase == 'discriminator_tsne' :
-                gan.discriminator_tsne()
-                print(" [*] discriminator_tsne finished!")
+        if args.phase == 'discriminator_tsne' :
+            gan.discriminator_tsne()
+            print(" [*] discriminator_tsne finished!")
 
-            
-            if args.phase == 'draw' :
-                if args.draw == 'style_mix' :
-                    gan.draw_style_mixing_figure()
-                    print(" [*] Style mix finished!")
+        
+        if args.phase == 'draw' :
+            if args.draw == 'style_mix' :
+                gan.draw_style_mixing_figure()
+                print(" [*] Style mix finished!")
 
-                elif args.draw == 'truncation_trick' :
-                    gan.draw_truncation_trick_figure()
-                    print(" [*] Truncation_trick finished!")
+            elif args.draw == 'truncation_trick' :
+                gan.draw_truncation_trick_figure()
+                print(" [*] Truncation_trick finished!")
 
-                else :
-                    gan.draw_uncurated_result_figure()
-                    print(" [*] Un-curated finished!")
+            else :
+                gan.draw_uncurated_result_figure()
+                print(" [*] Un-curated finished!")
 
 if __name__ == '__main__':
     main()

@@ -544,26 +544,34 @@ def climate_data_wo_norm_4d_npy(save_dir_path, list_of_years):
 	
 
 
-		numpy_array_of_omega = np.load(load_file_path)[: , -1:, :, :]
+		numpy_array_of_ux = np.load(load_file_path)[: , 4:5, :, :]
+		
+		print("\n\n****** data from year for only ux  before normalization: {}  [:,4:5, 128:640, 320:832] shape {}, max {} min {} std {} mean {}".format(year, numpy_array_of_ux.shape, numpy_array_of_ux.max(), numpy_array_of_ux.min(), numpy_array_of_ux.std(), numpy_array_of_ux.mean() ))
 		
 
-		print("\n\n****** data from year {}  [:,1, 128:640, 320:832] shape {}, max {} min {} std {} mean {} \n\n ".format(year, numpy_array_of_omega.shape, numpy_array_of_omega.max(), numpy_array_of_omega.min(), numpy_array_of_omega.std(), numpy_array_of_omega.mean() ))
-		
-		save_path = os.path.join(save_dir_path , "climate_data_original/")
+		save_path = os.path.join(save_dir_path , "climate_data_original_ux_channel/")
 
 		if not os.path.exists(save_path):
 			os.makedirs(save_path)
 
-		np.save( str(save_path) + "{}.npy".format(year), numpy_array_of_omega)
+		
+		# numpy_array_of_ux = (numpy_array_of_ux- numpy_array_of_ux.mean())/numpy_array_of_ux.std()
+		print(" data from year for only ux after normalization: {}  [:,4:5, 128:640, 320:832] shape {}, max {} min {} std {} mean {} \n\n ".format(year, numpy_array_of_ux.shape, numpy_array_of_ux.max(), numpy_array_of_ux.min(), numpy_array_of_ux.std(), numpy_array_of_ux.mean() ))
+		
+		
+		np.save( str(save_path) + "{}.npy".format(year), numpy_array_of_ux)
 		print("Time taken to complete iteration", time.time() - tt)
 		
 	
-	return 
+
+
+	return
+
 
 
 
 save_dir_path = "/global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/"
-list_of_years = ["1996", "1997", "1998"]
+list_of_years = ["1996", "1997", "1998", "1999"]
 print("Started running the program")
 
 
@@ -616,6 +624,33 @@ Time taken to complete iteration 54.4095184803009
 
 
 Time taken to complete iteration 55.64541745185852
+
+
+
+
+
+
+
+
+****** data from year for only ux : 1996  [:,4:5, 128:640, 320:832] shape (2920, 7, 512, 512), max 75.88934326171875 min -82.63091278076172 std 8.912748336791992 mean 1.4762574434280396
+
+
+Time taken to complete iteration 29.897401809692383
+
+
+****** data from year for only ux : 1997  [:,4:5, 128:640, 320:832] shape (2920, 7, 512, 512), max 70.5874252319336 min -80.48070526123047 std 8.641823768615723 mean 1.463395595550537
+
+
+Time taken to complete iteration 35.465564012527466
+
+
+****** data from year for only ux : 1998  [:,4:5, 128:640, 320:832] shape (2920, 7, 512, 512), max 72.6349105834961 min -74.80836486816406 std 9.014705657958984 mean 1.5494831800460815
+
+
+Time taken to complete iteration 36.631710052490234
+
+
+****** data from year for only ux : 1999  [:,4:5, 128:640, 320:832] shape (2920, 7, 512, 512), max 73.51978302001953 min -65.36072540283203 std 9.073304176330566 mean 1.2316417694091797
 
 
 

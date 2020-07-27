@@ -14,13 +14,9 @@ module load cuda/10.0.130
 # module load nccl
 module load python/3.7-anaconda-2019.07
 source activate tf-1.13
-module load tensorflow/gpu-1.13.1-py36
-
-# chekpoint_dir ./stored_outputs/wo_norm_512/checkpoint and counter 255468
 
 
 
-# ./stored_outputs/fixed_offset_normalized_feature_matching_step_annealing_custom_cropping_logan_annealed_omega_128/checkpoint
 
 #run the application:
 python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 \

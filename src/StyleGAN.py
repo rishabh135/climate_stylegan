@@ -8,7 +8,7 @@ from random import randint
 # seed random number generator
 seed(1)
 import math
-
+from plotting_histogram import *
 
 from tensorflow.contrib.data import prefetch_to_device, shuffle_and_repeat, map_and_batch
 import numpy as np
@@ -1020,6 +1020,8 @@ class StyleGAN(object):
                 # _, ms_loss = self.sess.run([self.discriminator_optim[current_res], self.ms_loss[current_res] ])
 
                 generated_fake_images = self.sess.run([self.generated_images[current_res]])[0][-self.number_for_l2_images:]
+                generated_fake_images = generated_fake_images.transpose(0,3,1,2)
+
                 # real_images = 
 
                 # print("\n generated_fake_images {} {} ".format(type(generated_fake_images),  current_res))
@@ -1053,23 +1055,29 @@ class StyleGAN(object):
 
 
                 # display training status
-                self.experiment.set_step(counter)
+                # self.experiment.set_step(counter)
                 counter += 1
-                
+
+
+                self.experiment_log_dict = {}
+    
 
                 if self.power_spectra_loss:
-                    self.experiment.log_metric("ps_loss", ps_loss, step=counter)
 
-                self.experiment.log_metric("d_loss",d_loss,step=counter)
-                self.experiment.log_metric("g_loss",g_loss,step=counter)
-                self.experiment.log_metric("r1_penalty", r1_loss,step=counter)
+                    self.experiment_log_dict.update({"ps_loss": ps_loss})
 
-                self.experiment.log_metric("feature_matching_loss", fml_loss, step=counter)
+                self.experiment_log_dict.update({"d_loss" : d_loss})
+                self.experiment_log_dict.update({"g_loss" : g_loss})
+                self.experiment_log_dict.update({"r1_penalty" : r1_loss})
+
+                self.experiment_log_dict.update({"feature_matching_loss" : fml_loss})
+
+                self.experiment_log_dict.update({"alpha value" : alpha})
                 # self.experiment.log_metric("ms_loss", ms_loss, step=counter)
                 
-                self.experiment.log_metric("alpha value ", alpha, step=counter)
+                # self.experiment_log_dict.update({"alpha value "}, alpha, step=counter)
 
-
+                self.experiment.log(self.experiment_log_dict, step = counter)
 
                 #   fake_values, real_values = self.sess.run([self.divergence_fake[current_res], self.divergence_real[current_res]])
 
@@ -1083,7 +1091,32 @@ class StyleGAN(object):
                         % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))
 
 
-                if (np.mod(idx + 1, 1000) == 0):
+                if (np.mod(idx + 1, 500) == 0):
+
+
+
+
+                    ###############################################################################################################################################
+                    ###############################################################################################################################################
+                    ###############################################################################################################################################
+                    ###############################################################################################################################################
+
+                    #  Trying to work with the power spectra histogram
+
+                    # generated_fake_images and real_images
+                    ###############################################################################################################################################
+                    ###############################################################################################################################################
+
+                        
+                    print( "  generated_fake_images shape : {} real images shape {} ".format(generated_fake_images.shape, real_images.shape))
+
+                    power_spectra_image, figs = pspect(generated_fake_images, real_images)
+                    self.experiment.log({"power_spectra_imges": [self.experiment.Image(power_spectra_image, caption= " power_spectra_plots_{}_res_{}".format(idx, current_res) )]}, step = counter)
+                    
+
+
+
+
 
 
                     l2_generated = []
@@ -1118,7 +1151,10 @@ class StyleGAN(object):
                     if not os.path.exists(save_path_dir):
                         os.makedirs(save_path_dir)
                     plt.savefig( save_path_dir + "{}_at_res_{}.png".format(idx+1, current_res), dpi=200)
-                    self.experiment.log_figure(figure=plt,  figure_name=" l2_plots_{}_res_{}".format(idx, current_res) )
+                    
+
+                    self.experiment.log({"L2 image plots": [self.experiment.Image(plt, caption= " l2_plots_{}_res_{}".format(idx, current_res) )]}, step=counter)
+                    # self.experiment.log_figure(figure=plt,  figure_name= )
 
 
 
