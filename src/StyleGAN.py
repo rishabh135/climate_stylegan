@@ -1110,6 +1110,10 @@ class StyleGAN(object):
                         
                     print( "  generated_fake_images shape : {} real images shape {} ".format(generated_fake_images.shape, real_images.shape))
 
+
+
+
+
                     power_spectra_image, figs = pspect(generated_fake_images, real_images)
                     self.experiment.log({"power_spectra_imges": [self.experiment.Image(power_spectra_image, caption= " power_spectra_plots_{}_res_{}".format(idx, current_res) )]}, step = counter)
                     
@@ -1134,7 +1138,8 @@ class StyleGAN(object):
 
 
 
-                    fig=plt.figure()
+                    
+                    fig = plt.figure(figsize = (8,10), dpi=200)
                     plt.clf()
                     plt.xlabel("frequency of pairs")
                     plt.ylabel("l2 distance")

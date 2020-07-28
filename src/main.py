@@ -10,7 +10,7 @@ from StyleGAN import StyleGAN
 
 import argparse
 from utils import *
-
+from datetime import datetime
 
 import wandb as experiment
 
@@ -164,7 +164,7 @@ def main():
     hyper_params = vars(args)
     # experiment.config(hyper_params)
 
-    experiment.init(project="stylegan-v1-tf", name=args.name_experiment, dir="/global/cscratch1/sd/rgupta2/backup/climate_stylegan/wandb_data/", resume=True, config= hyper_params )
+    experiment.init(project="stylegan-v1-tf-{}".format(args.name_experiment), name="Run from {}".format(datetime.now().strftime('%H:%M-%d-%B-%Y')),  dir="/global/cscratch1/sd/rgupta2/backup/climate_stylegan/wandb_data/", config= hyper_params )
 
 
 

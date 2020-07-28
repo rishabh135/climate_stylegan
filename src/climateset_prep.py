@@ -529,7 +529,7 @@ def climate_data_wo_norm_4d_npy(save_dir_path, list_of_years):
 	t=time.time()
 	for year in list_of_years:
 		
-		load_file_path = "/project/projectdirs/dasrepo/mustafa/data/climate/sims/normalized/normalized_seven_channels_{}.npy".format(year)
+		load_file_path = "/project/projectdirs/dasrepo/mustafa/data/climate/sims/unnormalized/seven_channels_{}.npy".format(year)
 		
 		# files = sorted(glob(load_file_path))
 
@@ -549,13 +549,13 @@ def climate_data_wo_norm_4d_npy(save_dir_path, list_of_years):
 		print("\n\n****** data from year for only ux  before normalization: {}  [:,4:5, 128:640, 320:832] shape {}, max {} min {} std {} mean {}".format(year, numpy_array_of_ux.shape, numpy_array_of_ux.max(), numpy_array_of_ux.min(), numpy_array_of_ux.std(), numpy_array_of_ux.mean() ))
 		
 
-		save_path = os.path.join(save_dir_path , "climate_data_original_ux_channel/")
+		save_path = os.path.join(save_dir_path , "only_ux_normalized_by_constant_10/")
 
 		if not os.path.exists(save_path):
 			os.makedirs(save_path)
 
 		
-		# numpy_array_of_ux = (numpy_array_of_ux- numpy_array_of_ux.mean())/numpy_array_of_ux.std()
+		numpy_array_of_ux = numpy_array_of_ux/10.00
 		print(" data from year for only ux after normalization: {}  [:,4:5, 128:640, 320:832] shape {}, max {} min {} std {} mean {} \n\n ".format(year, numpy_array_of_ux.shape, numpy_array_of_ux.max(), numpy_array_of_ux.min(), numpy_array_of_ux.std(), numpy_array_of_ux.mean() ))
 		
 		

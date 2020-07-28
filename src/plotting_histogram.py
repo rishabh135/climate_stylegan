@@ -87,8 +87,8 @@ def pspect(imgs, vals, inverse_transf=None):
     gen_std = np.std(Pk_gen, axis=0)
 
 
-    fig = plt.figure()
-    print(" \n ********************  inside  pspect gen_mean.shape {} and gen-std.shape {} *****************\n\n ".format(gen_mean.shape, gen_std.shape ))
+    fig = plt.figure(figsize = (8,10), dpi=200)
+    # print(" \n ********************  inside  pspect gen_mean.shape {} and gen-std.shape {} *****************\n\n ".format(gen_mean.shape, gen_std.shape ))
     plt.fill_between(k, (gen_mean - gen_std).squeeze(), (gen_mean + gen_std).squeeze(), color='red', alpha=0.4)
     plt.plot(k, val_mean, 'k:')
     plt.plot(k, gen_mean, 'r--')
