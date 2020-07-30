@@ -12,7 +12,7 @@ def pixhist(imgs, vals, inverse_transf=None):
     val_hist, bin_edges = np.histogram(vals, bins=50)
     gen_hist, _ = np.histogram(imgs, bins=bin_edges)
     centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-    fig = plt.figure()
+    fig = plt.figure(figsize = (8,10), dpi=200)
     plt.errorbar(centers, val_hist, yerr=np.sqrt(val_hist), fmt='ks--', label='real')
     plt.errorbar(centers, gen_hist, yerr=np.sqrt(gen_hist), fmt='ro', label='generated')
     plt.xlabel('Value')
@@ -21,7 +21,7 @@ def pixhist(imgs, vals, inverse_transf=None):
     plt.legend()
     sqdiff = np.power(val_hist - gen_hist, 2.0)
     val_hist[val_hist<=0.] = 1.
-    return (fig, np.sum(np.divide(sqdiff, val_hist)))
+    return fig, np.sum(np.divide(sqdiff, val_hist))
 
 
 def azimuthalAverage(image, center=None):

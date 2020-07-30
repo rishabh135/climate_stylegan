@@ -580,7 +580,81 @@ print("Started running the program")
 # climate_data_wo_norm_4d(save_dir_path, list_of_years)
 
 
-climate_data_wo_norm_4d_npy(save_dir_path, list_of_years)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def precipiration_data_wo_norm_4d_npy(save_dir_path, list_of_years):
+
+
+
+
+
+
+
+
+
+
+	""" saving omega data as original without any normalization"""
+	t=time.time()
+	for year in list_of_years:
+		
+		load_file_path = "/project/projectdirs/dasrepo/mustafa/data/climate/sims/unnormalized/seven_channels_{}.npy".format(year)
+		
+		# files = sorted(glob(load_file_path))
+
+		# print("\n files found in the current directory for year {} = {}".format(year, len(files)))
+		# list_of_omega_data = []    
+		# for _, file in enumerate(files):
+
+		# 	tmp_ds = xr.open_dataset(file, decode_times=False)
+		# 	list_of_omega_data.append( np.expand_dims(tmp_ds["OMEGA500"][:, 128:640, 320:832].values, axis=1))
+
+		tt = time.time()
+	
+
+
+		numpy_array_of_ux = np.load(load_file_path)[: , 0:1, :, :]
+		
+		print("\n\n****** data from year for precipitation before normalization: {}  [:,0:1, 128:640, 320:832] shape {}, max {} min {} std {} mean {}".format(year, numpy_array_of_ux.shape, numpy_array_of_ux.max(), numpy_array_of_ux.min(), numpy_array_of_ux.std(), numpy_array_of_ux.mean() ))
+		
+
+		save_path = os.path.join(save_dir_path , "only_precipitation_unnormalized/")
+
+		if not os.path.exists(save_path):
+			os.makedirs(save_path)
+
+		
+		# numpy_array_of_ux = numpy_array_of_ux/10.00
+		# print(" data from year for only ux after normalization: {}  [:,4:5, 128:640, 320:832] shape {}, max {} min {} std {} mean {} \n\n ".format(year, numpy_array_of_ux.shape, numpy_array_of_ux.max(), numpy_array_of_ux.min(), numpy_array_of_ux.std(), numpy_array_of_ux.mean() ))
+		
+		
+		np.save( str(save_path) + "{}.npy".format(year), numpy_array_of_ux)
+		print("Time taken to complete iteration", time.time() - tt)
+		
+	
+
+
+	return
+
+
+
+
+
+
+
+precipiration_data_wo_norm_4d_npy(save_dir_path, list_of_years)
 
 
 

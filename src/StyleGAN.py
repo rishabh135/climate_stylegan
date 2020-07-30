@@ -9,6 +9,7 @@ from random import randint
 seed(1)
 import math
 from plotting_histogram import *
+from scipy.stats import chisquare
 
 from tensorflow.contrib.data import prefetch_to_device, shuffle_and_repeat, map_and_batch
 import numpy as np
@@ -1091,7 +1092,7 @@ class StyleGAN(object):
                         % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))
 
 
-                if (np.mod(idx + 1, 500) == 0):
+                if (np.mod(idx + 1, 999) == 0):
 
 
 
@@ -1114,10 +1115,17 @@ class StyleGAN(object):
 
 
 
-                    power_spectra_image, figs = pspect(generated_fake_images, real_images)
-                    self.experiment.log({"power_spectra_imges": [self.experiment.Image(power_spectra_image, caption= " power_spectra_plots_{}_res_{}".format(idx, current_res) )]}, step = counter)
-                    
+                    power_spectra_image, spectra_vals = pspect(generated_fake_images, real_images)
+                    self.experiment.log({"power_spectra_images": [self.experiment.Image(power_spectra_image, caption= "power_spectra_plots_{}_res_{}".format(idx, current_res) )]}, step = counter)
+                    self.experiment.log({ 'chisquare_spectra' : spectra_vals }, step = counter)
 
+                    # power_spectra_chi_val , power_spectra_chi_p = chisquare(spectra_vals) 
+
+
+                    pixhistogram_image, pix_vals = pixhist(generated_fake_images, real_images)
+                    self.experiment.log({"pix_hist_images": [self.experiment.Image(pixhistogram_image, caption= "pix_hist_plots_{}_res_{}".format(idx, current_res))]}, step = counter)                    
+                    # pix_chi_val , po_chi_p   = chisquare(pix_vals)
+                    self.experiment.log({ 'chisquare_pix' : pix_vals }, step = counter)
 
 
 
