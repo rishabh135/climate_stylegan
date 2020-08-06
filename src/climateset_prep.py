@@ -630,14 +630,14 @@ def precipiration_data_wo_norm_4d_npy(save_dir_path, list_of_years):
 		print("\n\n****** data from year for precipitation before normalization: {}  [:,0:1, 128:640, 320:832] shape {}, max {} min {} std {} mean {}".format(year, numpy_array_of_ux.shape, numpy_array_of_ux.max(), numpy_array_of_ux.min(), numpy_array_of_ux.std(), numpy_array_of_ux.mean() ))
 		
 
-		save_path = os.path.join(save_dir_path , "only_precipitation_unnormalized/")
+		save_path = os.path.join(save_dir_path , "only_precipitation_normalized_0.008_x/")
 
 		if not os.path.exists(save_path):
 			os.makedirs(save_path)
 
 		
-		# numpy_array_of_ux = numpy_array_of_ux/10.00
-		# print(" data from year for only ux after normalization: {}  [:,4:5, 128:640, 320:832] shape {}, max {} min {} std {} mean {} \n\n ".format(year, numpy_array_of_ux.shape, numpy_array_of_ux.max(), numpy_array_of_ux.min(), numpy_array_of_ux.std(), numpy_array_of_ux.mean() ))
+		numpy_array_of_ux = numpy_array_of_ux/ (0.008+ numpy_array_of_ux)
+		print(" data from year for precipitation after normalization: {}  [:,0:1, 128:640, 320:832] shape {}, max {} min {} std {} mean {} \n\n ".format(year, numpy_array_of_ux.shape, numpy_array_of_ux.max(), numpy_array_of_ux.min(), numpy_array_of_ux.std(), numpy_array_of_ux.mean() ))
 		
 		
 		np.save( str(save_path) + "{}.npy".format(year), numpy_array_of_ux)

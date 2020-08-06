@@ -76,7 +76,7 @@ class StyleGAN(object):
         self.divergence_lambda = 0.001
         self.divergence_loss_flag = False
         self.inference_counter_number = args.inference_counter_number
-        self.number_for_l2_images = 200
+        self.number_for_l2_images = 100
         self.mode_seeking_gan = False;
         self.channels_list = args.channels_list
         self.crop_size = args.crop_size
@@ -196,6 +196,9 @@ class StyleGAN(object):
         
         print("# logan_flag : {}".format(self.logan_flag))
         print("# decay logan : {}".format(self.decay_logan))
+        
+
+        print("# custom_cropping_flag : {}".format(self.custom_cropping_flag))
         print("\n\n")
 
     ##################################################################################
@@ -705,6 +708,7 @@ class StyleGAN(object):
 
                 if(self.generated_images[res].get_shape().as_list()[0] > self.number_for_l2_images):
                     self.generated_images[res] = self.generated_images[res][-self.number_for_l2_images:]
+                    generated_images_per_gpu = generated_images_per_gpu[-self.number_for_l2_images:]
 
 
 
@@ -1117,7 +1121,7 @@ class StyleGAN(object):
 
                     power_spectra_image, spectra_vals = pspect(generated_fake_images, real_images)
                     self.experiment.log({"power_spectra_images": [self.experiment.Image(power_spectra_image, caption= "power_spectra_plots_{}_res_{}".format(idx, current_res) )]}, step = counter)
-                    self.experiment.log({ 'chisquare_spectra' : spectra_vals }, step = counter)
+                    self.experiment.log({ "spectra_vals": spectra_vals }, step = counter)
 
                     # power_spectra_chi_val , power_spectra_chi_p = chisquare(spectra_vals) 
 
@@ -1125,7 +1129,7 @@ class StyleGAN(object):
                     pixhistogram_image, pix_vals = pixhist(generated_fake_images, real_images)
                     self.experiment.log({"pix_hist_images": [self.experiment.Image(pixhistogram_image, caption= "pix_hist_plots_{}_res_{}".format(idx, current_res))]}, step = counter)                    
                     # pix_chi_val , po_chi_p   = chisquare(pix_vals)
-                    self.experiment.log({ 'chisquare_pix' : pix_vals }, step = counter)
+                    self.experiment.log({ "pix_vals" : pix_vals }, step = counter)
 
 
 

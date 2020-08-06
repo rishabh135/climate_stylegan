@@ -65,8 +65,8 @@ def parse_fn(img, res, input_channels, img_size, dtype, channels_list, crop_size
     if(fixed_offset > 0):
         offset_width = fixed_offset
 
-    else:
-        offset_width = randint(0, climate_img_size- crop_size-1)
+    elif(fixed_offset == 0 and custom_cropping_flag):
+       offset_width = randint(0, climate_img_size- crop_size-1)
 
     target_height = crop_size
     target_width = crop_size
