@@ -20,6 +20,10 @@ from data_pipeline import build_input_pipeline
 from power_spectra import batch_power_spectrum
 
 
+
+
+
+
 class StyleGAN(object):
 
     def __init__(self, sess, args, experiment):
@@ -45,10 +49,11 @@ class StyleGAN(object):
         self.batch_size = args.batch_size
         self.img_size = args.img_size
 
+        self.featuremap_factor = args.featuremap_factor
         """ Hyper-parameter"""
         self.start_res = args.start_res
         self.resolutions = resolution_list(self.img_size) # [4, 8, 16, 32, 64, 128, 256, 512, 1024 ...]
-        self.featuremaps = featuremap_list(self.img_size) # [512, 512, 512, 512, 256, 128, 64, 32, 16 ...]
+        self.featuremaps = featuremap_list(self.img_size, self.featuremap_factor) # [512, 512, 512, 512, 256, 128, 64, 32, 16 ...]
 
         if not self.progressive :
             self.resolutions = [self.resolutions[-1]]
@@ -88,6 +93,7 @@ class StyleGAN(object):
         self.feature_matching_loss = args.feature_matching_loss
         self.fixed_offset = args.fixed_offset
         self.logan_flag = args.logan_flag
+        self.wandb_flag  = args.wandb_flag
 
         self.z_dim = 512
         self.w_dim = 512
@@ -197,6 +203,7 @@ class StyleGAN(object):
         print("# logan_flag : {}".format(self.logan_flag))
         print("# decay logan : {}".format(self.decay_logan))
         
+        print("# wandb_flag : {}".format(self.wandb_flag))
 
         print("# custom_cropping_flag : {}".format(self.custom_cropping_flag))
         print("\n\n")
@@ -300,7 +307,7 @@ class StyleGAN(object):
         with tf.variable_scope("generator", reuse=reuse):
 
             resolutions = resolution_list(target_img_size)
-            featuremaps = featuremap_list(target_img_size)
+            featuremaps = featuremap_list(target_img_size, self.featuremap_factor)
 
             w_avg = tf.get_variable('w_avg', shape=[self.w_dim],
                                     dtype=tf.float32, initializer=tf.initializers.zeros(),
@@ -341,7 +348,7 @@ class StyleGAN(object):
         # print("tf.shape of x_init: ", tf.keras.backend.eval(tf.shape(x_init)))     
         with tf.variable_scope("discriminator", reuse=reuse):
             resolutions = resolution_list(target_img_size)
-            featuremaps = featuremap_list(target_img_size)
+            featuremaps = featuremap_list(target_img_size, self.featuremap_factor)
 
             r_resolutions = resolutions[::-1]
             r_featuremaps = featuremaps[::-1]
@@ -585,7 +592,7 @@ class StyleGAN(object):
                                 # LoGAN implemented with adding z1 gradient
                                 ##################################################################################
 
-                                z1 = tf.random_normal(shape=[batch_size, self.z_dim])
+                                z1 = tf.random_normal(shape=[batch_size, self.z_dim],  name='z_placeholder')
 
                                 if(self.logan_flag == True):
                                     z1 += self.gradient_over_latent(z1, alpha, res) 
@@ -696,7 +703,8 @@ class StyleGAN(object):
 
 
                 tmp_stored_images = tf.concat(generated_images_per_gpu, axis=0)
-                # print(" \n ***** tmp_stored_images type : {}  shape : {}  shapeof generated_images_per_gpu {} ".format(type(tmp_stored_images), tmp_stored_images.shape, generated_images_per_gpu[0].shape))
+                tf.print(tmp_stored_images.shape, output_stream=sys.stderr)
+                print(" \n ***** tmp_stored_images type : {}  shape : {}  shapeof generated_images_per_gpu {} ".format(type(tmp_stored_images), tmp_stored_images.shape, generated_images_per_gpu[0].shape))
                 
 
                 if res in self.generated_images:
@@ -706,9 +714,9 @@ class StyleGAN(object):
 
 
 
-                if(self.generated_images[res].get_shape().as_list()[0] > self.number_for_l2_images):
-                    self.generated_images[res] = self.generated_images[res][-self.number_for_l2_images:]
-                    generated_images_per_gpu = generated_images_per_gpu[-self.number_for_l2_images:]
+                # if(self.generated_images[res].get_shape().as_list()[0] > self.number_for_l2_images):
+                #     self.generated_images[res] = self.generated_images[res][-self.number_for_l2_images:]
+                #     # generated_images_per_gpu = generated_images_per_gpu[-self.number_for_l2_images:]
 
 
 
@@ -764,6 +772,36 @@ class StyleGAN(object):
             test_z = tf.random_normal(shape=[self.batch_size, self.z_dim])
             alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
             self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
+
+
+
+        elif (self.phase == "interpolate"):
+
+            # def slurp(theta, u, z0, z1):
+            #     return (np.sin((1-u)*theta)/np.sin(theta)) * z0 + (np.sin(u*theta)/np.sin(theta)) * z1
+
+            # z_0 = tf.random_normal(shape=[self.batch_size, self.z_dim])
+            # z_1 = tf.random_normal(shape=[self.batch_size, self.z_dim])
+            # alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
+
+            # # z_0 = dcgan.z_gen(shape=(dcgan.batch_size, dcgan.z_dim))
+            # # z_1 = dcgan.z_gen(shape=(dcgan.batch_size, dcgan.z_dim))
+            
+            # z_0_norm = np.sqrt(np.einsum('ij,ij->i', z_0, z_0))
+            # z_1_norm = np.sqrt(np.einsum('ij,ij->i', z_1, z_1))
+            # theta = np.arccos(np.einsum('ij,ij->i', z_0, z_1)/ (z_0_norm* z_1_norm))
+            # samples = []
+            # for u in np.arange(0,1.2,0.2):
+            #     z = slurp(theta, u, z_0, z_1)
+            #     samples.append(dcgan.sess.run(dcgan.sampler, feed_dict={dcgan.z: z}))
+
+
+            # # with tf.Graph().as_default() as g:
+            # #     with tf.Session(graph=g) as sess:
+            # #         dcgan = ana.load_dcgan(sess, checkpoint_dir, image_size, epoch)
+
+
+
 
 
         elif (self.phase == "discriminator_tsne"):
@@ -923,14 +961,7 @@ class StyleGAN(object):
             real_images = real_images[:, :, offset_width : offset_width +self.crop_size , (self.climate_img_size - self.crop_size)//2 : (self.climate_img_size - self.crop_size)//2 + self.crop_size]
 
         # real_images = real_images[:,:,:, -self.input_channels:]
-        
-        print(" Training L2 plots real_images shape {}\n".format(real_images.shape))
-        l2_real = []
-        for i, img in enumerate(real_images):
-            foo = [calculateDistance(img,j) for j in real_images[i+1:]]
-            l2_real.append(foo)
-            
-        real_distances = [j for i in l2_real for j in i]
+
 
 
 
@@ -986,6 +1017,8 @@ class StyleGAN(object):
 
 
 
+        self.generated_fake_images_stored = None
+
 
 
         for current_res_num in range(start_res_idx, len(self.resolutions)):
@@ -1024,9 +1057,17 @@ class StyleGAN(object):
 
                 # _, ms_loss = self.sess.run([self.discriminator_optim[current_res], self.ms_loss[current_res] ])
 
-                generated_fake_images = self.sess.run([self.generated_images[current_res]])[0][-self.number_for_l2_images:]
-                generated_fake_images = generated_fake_images.transpose(0,3,1,2)
 
+                generated_fake_images = self.sess.run([self.generated_images[current_res]])[0]
+                generated_fake_images = generated_fake_images.transpose(0,3,1,2)
+                
+
+                if(self.generated_fake_images_stored is None):
+                    self.generated_fake_images_stored = generated_fake_images
+                else:
+                    self.generated_fake_images_stored = np.concatenate((self.generated_fake_images_stored, generated_fake_images), axis=0)[-self.number_for_l2_images:]
+
+                # print(" Shape of genereated fake images stored  : {} ".format(self.generated_fake_images_stored.shape))
                 # real_images = 
 
                 # print("\n generated_fake_images {} {} ".format(type(generated_fake_images),  current_res))
@@ -1082,7 +1123,8 @@ class StyleGAN(object):
                 
                 # self.experiment_log_dict.update({"alpha value "}, alpha, step=counter)
 
-                self.experiment.log(self.experiment_log_dict, step = counter)
+                if(self.wandb_flag):
+                    self.experiment.log(self.experiment_log_dict, step = counter)
 
                 #   fake_values, real_values = self.sess.run([self.divergence_fake[current_res], self.divergence_real[current_res]])
 
@@ -1096,11 +1138,16 @@ class StyleGAN(object):
                         % (current_res, idx, current_iter, time.time() - start_time, d_loss, g_loss, alpha))
 
 
-                if (np.mod(idx + 1, 999) == 0):
+                if (np.mod(idx + 1, 2000) == 0):
 
+                    # temp_save_file_path = os.path.join(self.result_dir , "detecting_size_of_generated_images/") 
 
+                    # check_folder(temp_save_file_path)
+                    # np.save( temp_save_file_path + "generated_fake_images.npy", generated_fake_images )
 
-
+                    # np.save( temp_save_file_path+ "real_images.npy", real_images)
+                    
+                    generated_fake_images = self.generated_fake_images_stored
                     ###############################################################################################################################################
                     ###############################################################################################################################################
                     ###############################################################################################################################################
@@ -1113,65 +1160,75 @@ class StyleGAN(object):
                     ###############################################################################################################################################
 
                         
-                    print( "  generated_fake_images shape : {} real images shape {} ".format(generated_fake_images.shape, real_images.shape))
+                    # print( "  generated_fake_images shape : {} real images shape {} ".format(generated_fake_images.shape, real_images.shape))
+
+
+
+
+                    if(self.wandb_flag):
+
+
+                        for channel in range(self.input_channels):
+
+
+                            power_spectra_image, spectra_vals = pspect(generated_fake_images[:,channel:channel+1], real_images[:,channel:channel+1] )
+                            self.experiment.log({"power_spectra_images_channel_{}".format(channel): [self.experiment.Image(power_spectra_image, caption= "power_spectra_plots_channel_{}_{}_res_{}".format(channel, idx, current_res) )]}, step = counter)
+                            self.experiment.log({ "spectra_chi_val_channel_{}".format(channel): spectra_vals }, step = counter)
+
+                            # power_spectra_chi_val , power_spectra_chi_p = chisquare(spectra_vals) 
+
+
+                            pixhistogram_image, pix_vals = pixhist(generated_fake_images[:,channel:channel+1], real_images[:,channel:channel+1] )
+                            self.experiment.log({"pix_hist_images_channel_{}".format(channel): [self.experiment.Image(pixhistogram_image, caption= "pix_hist_plots_channel_{}_{}_res_{}".format(channel, idx, current_res))]}, step = counter)                    
+
+                            # pix_chi_val , po_chi_p   = chisquare(pix_vals)
+                            self.experiment.log({ "pix_vals_channel_{}".format(channel) : pix_vals }, step = counter)
 
 
 
 
 
-                    power_spectra_image, spectra_vals = pspect(generated_fake_images, real_images)
-                    self.experiment.log({"power_spectra_images": [self.experiment.Image(power_spectra_image, caption= "power_spectra_plots_{}_res_{}".format(idx, current_res) )]}, step = counter)
-                    self.experiment.log({ "spectra_vals": spectra_vals }, step = counter)
-
-                    # power_spectra_chi_val , power_spectra_chi_p = chisquare(spectra_vals) 
-
-
-                    pixhistogram_image, pix_vals = pixhist(generated_fake_images, real_images)
-                    self.experiment.log({"pix_hist_images": [self.experiment.Image(pixhistogram_image, caption= "pix_hist_plots_{}_res_{}".format(idx, current_res))]}, step = counter)                    
-                    # pix_chi_val , po_chi_p   = chisquare(pix_vals)
-                    self.experiment.log({ "pix_vals" : pix_vals }, step = counter)
+                            print(" Training L2 plots real_images shape {}\n".format(real_images.shape))
+                            l2_real = []
+                            for i, img in enumerate(real_images[:,channel:channel+1]):
+                                foo = [calculateDistance(img,j) for j in real_images[i+1:]]
+                                l2_real.append(foo)
+                                
+                            real_distances = [j for i in l2_real for j in i]
 
 
+                            l2_generated = []
+                            for i, img in enumerate(generated_fake_images[:,channel:channel+1]):
+                                foo = [calculateDistance(img,j) for j in generated_fake_images[i+1:]]
+                                l2_generated.append(foo)
 
+                            fake_distances = [j for i in l2_generated for j in i]
 
+                            # fake_distances = fake_distances[~is_outlier(fake_distances)]
+                            # print("fake_distance len {} ".format(len(fake_distances)))
+                            # print(" real_images type : {} ".format(type(real_images)))
 
-                    l2_generated = []
-                    for i, img in enumerate(generated_fake_images):
-                        foo = [calculateDistance(img,j) for j in generated_fake_images[i+1:]]
-                        l2_generated.append(foo)
+                            fig = plt.figure(figsize = (8,10), dpi=200)
+                            plt.clf()
+                            plt.xlabel("frequency of pairs")
+                            plt.ylabel("l2 distance")
+                            plt.hist([real_distances, fake_distances ], color=['r', 'g'], bins='fd', linewidth=2 ,histtype='step', label=["real_{}_channel_{}".format(self.number_for_l2_images, channel), "generated_{}_channel_{}".format(self.number_for_l2_images, channel)], density=True)
+                            
+                            min_x_data_value = min(real_distances)
+                            max_x_data_value = max(real_distances)
+                            
+                            plt.xlim(min_x_data_value, max_x_data_value)
+                            plt.legend(loc="upper left")
 
-                    fake_distances = [j for i in l2_generated for j in i]
+                            # save_path_dir =  os.path.join(self.result_dir , "l2_image_plots/") 
+                            
+                            # if not os.path.exists(save_path_dir):
+                            #     os.makedirs(save_path_dir)
+                            # plt.savefig( save_path_dir + "{}_at_res_{}.png".format(idx+1, current_res), dpi=200)
+                            
 
-                    # fake_distances = fake_distances[~is_outlier(fake_distances)]
-
-                    # print("fake_distance len {} ".format(len(fake_distances)))
-                    # print(" real_images type : {} ".format(type(real_images)))
-
-
-
-
-                    
-                    fig = plt.figure(figsize = (8,10), dpi=200)
-                    plt.clf()
-                    plt.xlabel("frequency of pairs")
-                    plt.ylabel("l2 distance")
-                    plt.hist([real_distances, fake_distances ], color=['r', 'g'], bins='fd', linewidth=2 ,histtype='step', label=["real_100", "generated_100"], density=True)
-                    
-                    min_x_data_value = min(real_distances)
-                    max_x_data_value = max(real_distances)
-                    
-                    plt.xlim(min_x_data_value, max_x_data_value)
-                    plt.legend(loc="upper left")
-
-                    save_path_dir =  os.path.join(self.result_dir , "l2_image_plots/") 
-                    
-                    if not os.path.exists(save_path_dir):
-                        os.makedirs(save_path_dir)
-                    plt.savefig( save_path_dir + "{}_at_res_{}.png".format(idx+1, current_res), dpi=200)
-                    
-
-                    self.experiment.log({"L2 image plots": [self.experiment.Image(plt, caption= " l2_plots_{}_res_{}".format(idx, current_res) )]}, step=counter)
-                    # self.experiment.log_figure(figure=plt,  figure_name= )
+                            self.experiment.log({"L2 image plots": [self.experiment.Image(plt, caption= " l2_plots_channel_{}_idx_{}_res_{}".format(channel, idx, current_res) )]}, step=counter)
+                            # self.experiment.log_figure(figure=plt,  figure_name= )
 
 
 

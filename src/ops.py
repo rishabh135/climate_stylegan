@@ -137,6 +137,15 @@ def compute_loss(real_images, real_logit, fake_logit, fake_img1, z1, D_real_feat
 
 
 
+    # D_loss = -tf.reduce_mean(tf.log(D_real) + tf.log(1. - D_fake))
+    # G_loss = -tf.reduce_mean(tf.log(D_fake))
+
+    # """ WGAN """
+    # D_loss = tf.reduce_mean(D_real) - tf.reduce_mean(D_fake)
+    # G_loss = -tf.reduce_mean(D_fake)
+
+
+
 
     # l1_norm_images = tf.abs()
     # l1_norm_images = tf.norm( tf.reshape((fake_img1 - fake_img2), [fake_img1.get_shape().as_list()[0], -1]), ord=1)
@@ -644,7 +653,7 @@ def resolution_list(img_size) :
 
     return x
 
-def featuremap_list(img_size) :
+def featuremap_list(img_size, featuremap_factor) :
 
     start_feature_map = 512
     feature_map = start_feature_map
@@ -656,6 +665,7 @@ def featuremap_list(img_size) :
         if img_size < 4 :
             break
         else :
+            feature_map =  int (feature_map/featuremap_factor)
             x.append(feature_map)
             img_size = img_size // 2
 

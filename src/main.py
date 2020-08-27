@@ -3,14 +3,16 @@ import matplotlib as mpl
 mpl.use('Agg')
 mpl.rcParams['agg.path.chunksize'] = 10000
 import matplotlib.pyplot as plt
-from comet_ml import Experiment
-from comet_ml import OfflineExperiment
 from StyleGAN import StyleGAN
 
 
 import argparse
 from utils import *
 from datetime import datetime
+
+# from comet_ml import Experiment
+# from comet_ml import OfflineExperiment
+
 
 import wandb as experiment
 
@@ -109,6 +111,13 @@ def parse_args():
                         help='whether to use feature matching loss from Improving GAN paper by Tim Salimans')
 
     
+    parser.add_argument('--wandb_flag', type=bool, default= True,
+                        help='Flag to log with wandb or not')
+
+
+    parser.add_argument('--featuremap_factor', type=int, default= 1,
+                        help='how much the featuremaps should be divided by')
+    
     return check_args(parser.parse_args())
 
 
@@ -127,8 +136,7 @@ def check_args(args):
 
     # experiment = Experiment(api_key="lsfFN2N0VlRIMOwAg9rmJ2SAf", project_name="{}".format(args.name_experiment), workspace="style-gan")
 
-
-
+  
 
     # experiment = OfflineExperiment(project_name="{}_{}".format("args.name_experiment", args.input_channels), workspace="style-gan" ,offline_directory="./comet_ml_offline_experiments/feature_matching_step_annealed_logan/")
 
@@ -152,20 +160,23 @@ def check_args(args):
         assert args.batch_size >= 1
     except:
         print('batch size must be larger than or equal to one')
-    return args, experiment
+    return args
 
 
 """main"""
 def main():
     # parse arguments
-    args, experiment = parse_args()
+    args = parse_args()
 
 
     hyper_params = vars(args)
     # experiment.config(hyper_params)
 
-    experiment.init(project="stylegan-v1-tf-{}".format(args.name_experiment), name="Run from {}".format(datetime.now().strftime('%H:%M-%d-%B-%Y')),  dir="/global/cscratch1/sd/rgupta2/backup/climate_stylegan/wandb_data/", config= hyper_params )
 
+    experiment.init(project="stylegan-v1-tf-{}".format(args.name_experiment), name="Run from {}".format(datetime.now().strftime('%H:%M-%d-%B-%Y')),  dir="/global/cscratch1/sd/rgupta2/backup/climate_stylegan/wandb_data/", config= hyper_params )
+      
+
+        # experiment = Experiment(api_key="lsfFN2N0VlRIMOwAg9rmJ2SAf", project_name="{}".format(args.name_experiment), workspace="style-gan")        
 
 
     if args is None:

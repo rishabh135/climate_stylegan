@@ -9,18 +9,26 @@ from scipy import fftpack
 def pixhist(imgs, vals, inverse_transf=None):
     if inverse_transf:
         imgs = inverse_transf(imgs)
-    val_hist, bin_edges = np.histogram(vals, bins=50)
-    gen_hist, _ = np.histogram(imgs, bins=bin_edges)
-    centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    val_hist, val_bin_edges = np.histogram(vals, bins=100 , range=(0.0001, 0.21) )
+    gen_hist, gen_bin_edges  = np.histogram(imgs, bins=100, range=(0.0001, 0.21))
+    
+    val_centers = (val_bin_edges[:-1] + val_bin_edges[1:]) / 2
+    
+    # gen_centers = (gen_bin_edges[:-1] + gen_bin_edges[1:]) / 2
+    
+
     fig = plt.figure(figsize = (8,10), dpi=200)
-    plt.errorbar(centers, val_hist, yerr=np.sqrt(val_hist), fmt='ks--', label='real')
-    plt.errorbar(centers, gen_hist, yerr=np.sqrt(gen_hist), fmt='ro', label='generated')
+    plt.errorbar(val_centers, val_hist, yerr=np.sqrt(val_hist), fmt='ks--', label='real')
+    plt.errorbar(val_centers, gen_hist, yerr=np.sqrt(gen_hist), fmt='ro', label='generated')
     plt.xlabel('Value')
     plt.ylabel('Counts')
     plt.yscale('log')
     plt.legend()
     sqdiff = np.power(val_hist - gen_hist, 2.0)
+    
     val_hist[val_hist<=0.] = 1.
+
+#     plt.savefig("./normalized_prec_data_0.008_at_generator_87500.jpeg", dpi=200)
     return fig, np.sum(np.divide(sqdiff, val_hist))
 
 
@@ -99,4 +107,6 @@ def pspect(imgs, vals, inverse_transf=None):
     plt.ylabel(r'$P(k)$')
     plt.xlabel(r'$k$')
     plt.title('Power Spectrum')
-    return fig, np.sum(np.divide(np.power(gen_mean[:64] - val_mean[:64], 2.0), val_mean[:64]))
+    chi_val = np.sum(np.divide(np.power(gen_mean[:64] - val_mean[:64], 2.0), val_mean[:64]))
+    print(" chi val : {} ".format(chi_val))
+    return fig, chi_val
