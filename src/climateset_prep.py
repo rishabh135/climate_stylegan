@@ -657,10 +657,68 @@ def precipiration_data_wo_norm_4d_npy(save_dir_path, list_of_years):
 
 
 
+def prw_data_wo_norm_4d_npy(save_dir_path, list_of_years):
 
 
-precipiration_data_wo_norm_4d_npy(save_dir_path, list_of_years)
 
+
+
+
+
+
+
+
+	""" saving omega data as original without any normalization"""
+	t=time.time()
+	for year in list_of_years:
+		
+		load_file_path = "/project/projectdirs/dasrepo/mustafa/data/climate/sims/unnormalized/seven_channels_{}.npy".format(year)
+		
+		# files = sorted(glob(load_file_path))
+
+		# print("\n files found in the current directory for year {} = {}".format(year, len(files)))
+		# list_of_omega_data = []    
+		# for _, file in enumerate(files):
+
+		# 	tmp_ds = xr.open_dataset(file, decode_times=False)
+		# 	list_of_omega_data.append( np.expand_dims(tmp_ds["OMEGA500"][:, 128:640, 320:832].values, axis=1))
+
+		tt = time.time()
+	
+
+
+		numpy_array_of_prw = np.load(load_file_path)[: , 1:2, :, :]
+		
+		print("\n\n****** data from year for prw before normalization: {}  [:,1:2, 128:640, 320:832] shape {}, max {} min {} std {} mean {}".format(year, numpy_array_of_prw.shape, numpy_array_of_prw.max(), numpy_array_of_prw.min(), numpy_array_of_prw.std(), numpy_array_of_prw.mean() ))
+		
+
+		save_path = os.path.join(save_dir_path , "only_prw/")
+
+		if not os.path.exists(save_path):
+			os.makedirs(save_path)
+
+		# print(" data from year for precipitation after normalization: {}  [:,0:1, 128:640, 320:832] shape {}, max {} min {} std {} mean {} \n\n ".format(year, numpy_array_of_ux.shape, numpy_array_of_ux.max(), numpy_array_of_ux.min(), numpy_array_of_ux.std(), numpy_array_of_ux.mean() ))
+		
+		
+		# final_data = np.concatenate((numpy_array_of_ux, numpy_array_of_ux_008, numpy_array_of_ux_012), axis=1)
+
+		# print(" data from year for precipitation after normalization: {}  [:,0:3, 128:640, 320:832] shape {}, max {} min {} std {} mean {} \n\n ".format(year, final_data.shape, final_data.max(), final_data.min(), final_data.std(), final_data.mean() ))
+		
+		np.save( str(save_path) + "{}.npy".format(year), numpy_array_of_prw)
+		print("Time taken to complete iteration", time.time() - tt)
+		
+	
+
+
+	return
+
+
+
+
+
+
+# precipiration_data_wo_norm_4d_npy(save_dir_path, list_of_years)
+prw_data_wo_norm_4d_npy(save_dir_path, list_of_years)
 
 
 

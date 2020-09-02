@@ -26,7 +26,7 @@ python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --datas
 	--log_dir ./stored_outputs/wo_normalized_ux_logan_annealed_feature_matching_fixed_offset_192_res_128/log \
 	--sample_dir ./stored_outputs/wo_normalized_ux_logan_annealed_feature_matching_fixed_offset_192_res_128/sample \
 	--dataset_location /global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_original_ux_channel/ \
-	--name_experiment "[Stylegan V1 only_ux_without_normalization  wo_normalized_ux_logan_annealed_feature_matching_fixed_offset_192_res_128 ] normalized_climate data at 128 new_version"
+	--name_experiment "[only_ux_without_normalization_logan_annealed_feature_matching_fixed_offset_192_res_128 ]"
  
 
 

@@ -2,6 +2,7 @@ import time, re, sys
 from ops import *
 from utils import *
 import tensorflow
+import subprocess
 tensorflow.get_logger().setLevel('INFO')
 from random import seed
 from random import randint
@@ -19,7 +20,7 @@ from tqdm import tqdm
 from data_pipeline import build_input_pipeline
 from power_spectra import batch_power_spectrum
 
-
+import glob
 
 
 
@@ -774,8 +775,15 @@ class StyleGAN(object):
             self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
 
 
+        elif (self.phase == "interpolate_inference") :
+            """" Testing """
+            test_z = tf.random_normal(shape=[self.batch_size, self.z_dim])
+            alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
+            self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
 
-        elif (self.phase == "interpolate"):
+
+
+
 
             # def slurp(theta, u, z0, z1):
             #     return (np.sin((1-u)*theta)/np.sin(theta)) * z0 + (np.sin(u*theta)/np.sin(theta)) * z1
@@ -1395,6 +1403,124 @@ class StyleGAN(object):
         np.save( save_file_path, discriminator_embedding)
         print(" Discriminator embedding Operation completed with save file path = {} ".format(save_file_path))
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def interpolate_inference(self):
+
+        print("Entered interpolate inference successfully")
+        tf.global_variables_initializer().run()
+
+        print("intitialized tensorflow variable")
+
+        self.saver = tf.train.Saver()
+        
+        # could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+        
+        could_load, checkpoint_counter = self.load(self.checkpoint_dir, self.inference_counter_number)
+
+        result_dir = os.path.join(self.result_dir, "interpolate/")
+        check_folder(result_dir)
+
+        if could_load:
+            print(" [*] Load SUCCESS with checkpoint counter {}".format(checkpoint_counter))
+        else:
+            print(" [!] Load failed...")
+
+
+
+        alpha=0.0
+
+
+            
+        seed = 42
+            
+        batch_size = self.batch_size
+        z_dim = self.z_dim
+
+
+
+
+
+
+        def slurp(theta, u, z0, z1):
+            val1 = np.multiply((np.sin((1-u)*theta)/np.sin(theta))[:, None], z0)  
+            val2 = np.multiply((np.sin(u*theta)/np.sin(theta))[:, None] , z1)
+            return val1 + val2
+        z_0 = np.random.normal(size=[batch_size, z_dim])
+        z_1 = np.random.normal(size=[batch_size, z_dim])
+        # alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
+
+
+        z_0_norm = np.sqrt(np.einsum('ij,ij->i', z_0, z_0))
+        z_1_norm = np.sqrt(np.einsum('ij,ij->i', z_1, z_1))
+        theta = np.arccos(np.einsum('ij,ij->i', z_0, z_1)/ (z_0_norm* z_1_norm))
+        samples = []
+        for u in np.arange(0,1.05,0.05):
+            input_z = slurp(theta, u, z_0, z_1)
+            test_z = tf.cast(input_z, tf.float32)
+            alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
+
+            self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
+            out = self.sess.run(self.fake_images)
+            # feed_dict={inp_tensor : input_z}
+            # opt = sess.run(op_to_restore ,feed_dict)
+            samples.append(out)
+
+
+        for j in range(len(samples)):
+            plt.imshow(samples[j][0,:,:,0], cmap='seismic', vmin = -1.0, vmax=1.0);
+            save_file_path = str(result_dir) + "generator_{}_interpolate_step_{}.png".format(checkpoint_counter, str(j).zfill(3))
+            plt.savefig(save_file_path, dpi=200)
+
+
+        fig, axs = plt.subplots(2, len(samples), figsize=(25,15), dpi=200)
+        # fig.subplots_adjust(hspace=0.2, wspace=0.2)
+        for i in range(2):
+            for j in range(len(samples)):
+                axs[i,j].imshow(samples[j][i,:,:,0], cmap='seismic', vmin = -1.0, vmax=1.0);
+                axs[i,j].set_title('timestep : {}'.format(j))
+        
+        save_file_path = str(result_dir) + "generator_{}_interpolate_subplots.png".format(checkpoint_counter)
+        print("Operation completed with save file path = {} ".format(save_file_path))
+        # self.experiment.log({ "_{}".format(channel): [self.experiment.Image(plt, caption= "pix_hist_plots_channel_{}_{}_res_{}".format(channel, idx, current_res))]}, step = counter)                    
+
+        plt.savefig(save_file_path, dpi=200)
+
+        # def generate_video(img):
+        #     for i in xrange(len(img)):
+        #         plt.imshow(img[i], cmap=cm.Greys_r)
+        #         plt.savefig(folder + "/file%02d.png" % i)
+
+        os.chdir(result_dir)
+        subprocess.call([
+            'ffmpeg', '-framerate', '1', '-i', "generator_{}_interpolate_step_%03d.png".format(checkpoint_counter) , '-r', '30', '-pix_fmt', 'yuv420p',
+            'interpolation_video_{}.mp4'.format(checkpoint_counter)
+        ])
+        for file_name in glob.glob("generator_{}_interpolate_step_*.png".format(checkpoint_counter)):
+            os.remove(file_name)
+
+
+        # cax = fig.add_axes([1.0, 0.038, 0.03, 0.948])
+        # cbar = plt.colorbar(cax=cax, norm = [-10.0, 2.0])     
+        # plt.subplots_adjust(hspace=0)
+        #  The interpolated points must be part of the same spectra and , if they were temporal transformation, do they lie on the same distribution 
+
+        # save_file_path = str(result_dir) + "generator_{}_interpolate.png".format(checkpoint_counter)
+        # print("Operation completed with save file path = {} ".format(save_file_path))
+        # # self.experiment.log({ "_{}".format(channel): [self.experiment.Image(plt, caption= "pix_hist_plots_channel_{}_{}_res_{}".format(channel, idx, current_res))]}, step = counter)                    
+
+        # plt.savefig(save_file_path, dpi=200)
 
 
 

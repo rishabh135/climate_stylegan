@@ -214,6 +214,10 @@ def main():
             print(" [*] discriminator_tsne finished!")
 
         
+        if args.phase == 'interpolate_inference' :
+            gan.interpolate_inference()
+            print(" [*] interpolate_inference finished!")
+
         if args.phase == 'draw' :
             if args.draw == 'style_mix' :
                 gan.draw_style_mixing_figure()
