@@ -1457,17 +1457,45 @@ class StyleGAN(object):
             val1 = np.multiply((np.sin((1-u)*theta)/np.sin(theta))[:, None], z0)  
             val2 = np.multiply((np.sin(u*theta)/np.sin(theta))[:, None] , z1)
             return val1 + val2
+
+
         z_0 = np.random.normal(size=[batch_size, z_dim])
         z_1 = np.random.normal(size=[batch_size, z_dim])
+
+
+
+
+
+        """ mapping layers """
+        resolutions = resolution_list(self.img_size)
+        n_broadcast = len(resolutions) * 2
+        w_broadcasted = self.g_mapping(z, n_broadcast)
+
         # alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
 
 
         z_0_norm = np.sqrt(np.einsum('ij,ij->i', z_0, z_0))
         z_1_norm = np.sqrt(np.einsum('ij,ij->i', z_1, z_1))
         theta = np.arccos(np.einsum('ij,ij->i', z_0, z_1)/ (z_0_norm* z_1_norm))
+        
+        u = 0.01
+        z_1_1 = slurp(theta, u, z_0, z_1)
+        z_1_1_norm = np.sqrt(np.einsum('ij,ij->i', z_1_1, z_1_1))
+        theta = np.arccos(np.einsum('ij,ij->i', z_0, z_1_1)/ (z_0_norm* z_1_1_norm))
+            
+
+
+        u = 0.01
+        z_1_1_1 = slurp(theta, u, z_0, z_1_1)
+        z_1_1_1_norm = np.sqrt(np.einsum('ij,ij->i', z_1_1_1, z_1_1_1))
+        theta = np.arccos(np.einsum('ij,ij->i', z_0, z_1_1_1)/ (z_0_norm* z_1_1_1_norm))
+            
+
+        
+
         samples = []
-        for u in np.arange(0,1.05,0.05):
-            input_z = slurp(theta, u, z_0, z_1)
+        for u in np.arange(0,1.01,0.01):
+            input_z = slurp(theta, u, z_0, z_1_1_1)
             test_z = tf.cast(input_z, tf.float32)
             alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
 
@@ -1505,7 +1533,7 @@ class StyleGAN(object):
         os.chdir(result_dir)
         subprocess.call([
             'ffmpeg', '-framerate', '1', '-i', "generator_{}_interpolate_step_%03d.png".format(checkpoint_counter) , '-r', '30', '-pix_fmt', 'yuv420p',
-            'interpolation_video_{}.mp4'.format(checkpoint_counter)
+            'interpolation_video_1_10000_{}.mp4'.format(checkpoint_counter)
         ])
         for file_name in glob.glob("generator_{}_interpolate_step_*.png".format(checkpoint_counter)):
             os.remove(file_name)

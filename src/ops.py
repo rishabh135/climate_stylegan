@@ -65,6 +65,9 @@ def lrelu(x, alpha=0.2):
     return tf.nn.leaky_relu(x, alpha)
 
 
+def tanh(x):
+    return tf.math.tanh(x, name='tanh_output')
+
 ##################################################################################
 # Normalization function
 ##################################################################################
@@ -425,6 +428,7 @@ def torgb(x, res, input_channels=3, sn=False):
         with tf.variable_scope('ToRGB'):
             x = conv(x, channels=input_channels, kernel=1, stride=1, gain=1.0, lrmul=1.0, sn=sn)
             x = apply_bias(x, lrmul=1.0)
+            x= tanh(x)
     return x
 
 def fromrgb(x, res, n_f, sn=False):

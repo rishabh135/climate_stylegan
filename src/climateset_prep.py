@@ -692,10 +692,11 @@ def prw_data_wo_norm_4d_npy(save_dir_path, list_of_years):
 		print("\n\n****** data from year for prw before normalization: {}  [:,1:2, 128:640, 320:832] shape {}, max {} min {} std {} mean {}".format(year, numpy_array_of_prw.shape, numpy_array_of_prw.max(), numpy_array_of_prw.min(), numpy_array_of_prw.std(), numpy_array_of_prw.mean() ))
 		
 
-		save_path = os.path.join(save_dir_path , "only_prw/")
+		save_path = os.path.join(save_dir_path , "only_prw_normalized_by_100/")
 
 		if not os.path.exists(save_path):
 			os.makedirs(save_path)
+		numpy_array_of_prw = numpy_array_of_prw / 100.00
 
 		# print(" data from year for precipitation after normalization: {}  [:,0:1, 128:640, 320:832] shape {}, max {} min {} std {} mean {} \n\n ".format(year, numpy_array_of_ux.shape, numpy_array_of_ux.max(), numpy_array_of_ux.min(), numpy_array_of_ux.std(), numpy_array_of_ux.mean() ))
 		
