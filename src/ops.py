@@ -423,12 +423,13 @@ def upscale_conv(x, channels, kernel, gain=np.sqrt(2), lrmul=1.0, sn=False):
 
     return x
 
-def torgb(x, res, input_channels=3, sn=False):
+def torgb(x, res, input_channels=3, sn=False, tanh_flag = False):
     with tf.variable_scope('{:d}x{:d}'.format(res, res)):
         with tf.variable_scope('ToRGB'):
             x = conv(x, channels=input_channels, kernel=1, stride=1, gain=1.0, lrmul=1.0, sn=sn)
             x = apply_bias(x, lrmul=1.0)
-            x= tanh(x)
+            if(tanh_flag == True):
+                x = tanh(x)
     return x
 
 def fromrgb(x, res, n_f, sn=False):

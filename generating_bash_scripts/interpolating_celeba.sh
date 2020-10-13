@@ -32,5 +32,3 @@ python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --datas
  
 
 
-
-

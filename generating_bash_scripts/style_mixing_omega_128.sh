@@ -21,14 +21,14 @@ source activate tf-1.13
 #run the application:
 python  /global/cscratch1/sd/rgupta2/backup/climate_stylegan/src/main.py --dataset climate_stylegan2900 \
 	--input_channels 1 --start_res 128 --inference_counter_number 94375\
-	--img_size 128 --crop_size 128 --gpu_num 1 --progressive False --phase interpolate_inference  --fixed_offset 192\
+	--img_size 128 --crop_size 128 --gpu_num 1 --progressive False --phase draw  --fixed_offset 192\
 	--custom_cropping_flag True --decay_logan True  --feature_matching_loss True  --logan_flag True\
 	--checkpoint_dir ./stored_outputs/new_dataset_logan_annealed_omega_128/checkpoint \
 	--result_dir ./stored_outputs/new_dataset_logan_annealed_omega_128/result \
 	--log_dir ./stored_outputs/new_dataset_logan_annealed_omega_128/log \
 	--sample_dir ./stored_outputs/new_dataset_logan_annealed_omega_128/sample \
 	--dataset_location /global/cscratch1/sd/rgupta2/backup/climate_stylegan/dataset/climate_data_original/ \
-	--name_experiment "[Interpolate_snew dataset_location SGAN logan] wo_norm_climate data at 128 new_version"
+	--name_experiment "Style Mixing on omega 128"
  
 
 

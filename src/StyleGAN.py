@@ -9,6 +9,7 @@ from random import randint
 # seed random number generator
 seed(1)
 import math
+from matplotlib import gridspec
 from plotting_histogram import *
 from scipy.stats import chisquare
 
@@ -95,6 +96,7 @@ class StyleGAN(object):
         self.fixed_offset = args.fixed_offset
         self.logan_flag = args.logan_flag
         self.wandb_flag  = args.wandb_flag
+        self.tanh_flag = args.tanh_flag
 
         self.z_dim = 512
         self.w_dim = 512
@@ -300,7 +302,7 @@ class StyleGAN(object):
 
                     layer_index += 2
 
-                images_out = torgb(x, resolutions[-1], self.input_channels, sn=self.sn)
+                images_out = torgb(x, resolutions[-1], self.input_channels, sn=self.sn, tanh_flag =self.tanh_flag)
     
             return images_out
 
@@ -852,8 +854,12 @@ class StyleGAN(object):
                     #     # np.random.shuffle(generated_three_channel_data)
                        
 
+        elif (self.phase == "draw"):
 
-
+            """" Testing """
+            test_z = tf.random_normal(shape=[self.batch_size, self.z_dim])
+            alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
+            self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
 
     ##################################################################################
     # Train
@@ -1459,8 +1465,13 @@ class StyleGAN(object):
             return val1 + val2
 
 
-        z_0 = np.random.normal(size=[batch_size, z_dim])
-        z_1 = np.random.normal(size=[batch_size, z_dim])
+        def lerp( z0, z1, u):
+            val1 = abs(z1-z0)
+            val2 = val1 * u
+            return z0 + val2
+
+        z_0 = np.random.normal(size=[batch_size, z_dim]).astype('float32')
+        z_1 = np.random.normal(size=[batch_size, z_dim]).astype('float32')
 
 
 
@@ -1468,46 +1479,78 @@ class StyleGAN(object):
 
         """ mapping layers """
         resolutions = resolution_list(self.img_size)
+        featuremaps = featuremap_list(self.img_size, self.featuremap_factor)
         n_broadcast = len(resolutions) * 2
-        w_broadcasted = self.g_mapping(z, n_broadcast)
 
+
+        tf_z_0 = tf.cast(z_0, tf.float32)
+        tf_z_1 = tf.cast(z_1, tf.float32)
+
+
+        with tf.variable_scope('generator', reuse=tf.AUTO_REUSE) :
+            w_broadcasted_0 = self.sess.run( self.g_mapping(tf_z_0, n_broadcast) )   
+            w_broadcasted_1 = self.sess.run( self.g_mapping(tf_z_1, n_broadcast) ) 
+            
+
+
+        # w_broadcasted_0 = self.g_mapping(z_0, n_broadcast)
+        # w_broadcasted_1 = self.g_mapping(z_1, n_broadcast)
+
+
+        z_0 = w_broadcasted_0 
+        z_1 = w_broadcasted_1
+
+        print( " {}   {}".format(z_0.shape, z_1.shape))
+
+        # print("\n\n\n")
+        # print(z_0[0,:5])
+        # print("\n\n\n")
+        # print(z_0[1,:5])
+        # print("\n\n\n")
+        # print(z_0[2,:5])
+        # print("\n\n\n")
+        
         # alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
 
 
-        z_0_norm = np.sqrt(np.einsum('ij,ij->i', z_0, z_0))
-        z_1_norm = np.sqrt(np.einsum('ij,ij->i', z_1, z_1))
-        theta = np.arccos(np.einsum('ij,ij->i', z_0, z_1)/ (z_0_norm* z_1_norm))
+        # z_0_norm = np.sqrt(np.einsum('ij,ij->i', z_0, z_0))
+        # z_1_norm = np.sqrt(np.einsum('ij,ij->i', z_1, z_1))
+        # theta = np.arccos(np.einsum('ij,ij->i', z_0, z_1)/ (z_0_norm* z_1_norm))
         
-        u = 0.01
-        z_1_1 = slurp(theta, u, z_0, z_1)
-        z_1_1_norm = np.sqrt(np.einsum('ij,ij->i', z_1_1, z_1_1))
-        theta = np.arccos(np.einsum('ij,ij->i', z_0, z_1_1)/ (z_0_norm* z_1_1_norm))
+        # u = 0.01
+        # z_1_1 = slurp(theta, u, z_0, z_1)
+        # z_1_1_norm = np.sqrt(np.einsum('ij,ij->i', z_1_1, z_1_1))
+        # theta = np.arccos(np.einsum('ij,ij->i', z_0, z_1_1)/ (z_0_norm* z_1_1_norm))
             
 
 
-        u = 0.01
-        z_1_1_1 = slurp(theta, u, z_0, z_1_1)
-        z_1_1_1_norm = np.sqrt(np.einsum('ij,ij->i', z_1_1_1, z_1_1_1))
-        theta = np.arccos(np.einsum('ij,ij->i', z_0, z_1_1_1)/ (z_0_norm* z_1_1_1_norm))
+        # u = 0.01
+        # z_1_1_1 = slurp(theta, u, z_0, z_1_1)
+        # z_1_1_1_norm = np.sqrt(np.einsum('ij,ij->i', z_1_1_1, z_1_1_1))
+        # theta = np.arccos(np.einsum('ij,ij->i', z_0, z_1_1_1)/ (z_0_norm* z_1_1_1_norm))
             
-
-        
-
         samples = []
-        for u in np.arange(0,1.01,0.01):
-            input_z = slurp(theta, u, z_0, z_1_1_1)
-            test_z = tf.cast(input_z, tf.float32)
-            alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
 
-            self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
-            out = self.sess.run(self.fake_images)
-            # feed_dict={inp_tensor : input_z}
-            # opt = sess.run(op_to_restore ,feed_dict)
-            samples.append(out)
+        with tf.variable_scope('generator', reuse=tf.AUTO_REUSE) :
+            
+            for u in np.arange(0,1.01,0.01):
+                # input_z = slurp(theta, u, z_0, z_1)
+                input_z = lerp(z_0, z_1, u)
+                test_z = tf.cast(input_z, tf.float32)
+                alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
+
+
+                # self.fake_images = self.generator(test_z, alpha=alpha, target_img_size=self.img_size, is_training=False)
+                out = self.sess.run( self.g_synthesis(test_z, alpha, resolutions, featuremaps))
+                # feed_dict={inp_tensor : input_z}
+                # opt = sess.run(op_to_restore ,feed_dict)
+                samples.append(out)
+
+
 
 
         for j in range(len(samples)):
-            plt.imshow(samples[j][0,:,:,0], cmap='seismic', vmin = -1.0, vmax=1.0);
+            plt.imshow(samples[j][0,:,:,0], cmap='seismic', vmin = -1.0, vmax=1.0)
             save_file_path = str(result_dir) + "generator_{}_interpolate_step_{}.png".format(checkpoint_counter, str(j).zfill(3))
             plt.savefig(save_file_path, dpi=200)
 
@@ -1516,10 +1559,10 @@ class StyleGAN(object):
         # fig.subplots_adjust(hspace=0.2, wspace=0.2)
         for i in range(2):
             for j in range(len(samples)):
-                axs[i,j].imshow(samples[j][i,:,:,0], cmap='seismic', vmin = -1.0, vmax=1.0);
+                axs[i,j].imshow(samples[j][i,:,:,0], cmap='seismic', vmin = -1.0, vmax=1.0)
                 axs[i,j].set_title('timestep : {}'.format(j))
         
-        save_file_path = str(result_dir) + "generator_{}_interpolate_subplots.png".format(checkpoint_counter)
+        save_file_path = str(result_dir) + "generator_{}_interpolate_subplots_for_linear_interpolation_in_w.png".format(checkpoint_counter)
         print("Operation completed with save file path = {} ".format(save_file_path))
         # self.experiment.log({ "_{}".format(channel): [self.experiment.Image(plt, caption= "pix_hist_plots_channel_{}_{}_res_{}".format(channel, idx, current_res))]}, step = counter)                    
 
@@ -1533,7 +1576,7 @@ class StyleGAN(object):
         os.chdir(result_dir)
         subprocess.call([
             'ffmpeg', '-framerate', '1', '-i', "generator_{}_interpolate_step_%03d.png".format(checkpoint_counter) , '-r', '30', '-pix_fmt', 'yuv420p',
-            'interpolation_video_1_10000_{}.mp4'.format(checkpoint_counter)
+            'interpolation_video_for_linear_interpolation_in_w_{}.mp4'.format(checkpoint_counter)
         ])
         for file_name in glob.glob("generator_{}_interpolate_step_*.png".format(checkpoint_counter)):
             os.remove(file_name)
@@ -1611,6 +1654,9 @@ class StyleGAN(object):
         np.save( save_file_path, Data)
         print("Operation completed with save file path = {} ".format(save_file_path))
 
+
+
+        
     def draw_uncurated_result_figure(self):
 
         tf.global_variables_initializer().run()
@@ -1657,25 +1703,61 @@ class StyleGAN(object):
         canvas.save('{}/figure02-uncurated.jpg'.format(result_dir))
 
     def draw_style_mixing_figure(self):
+
+
+
+
+        print("Entered style mixing test phase successfully")
         tf.global_variables_initializer().run()
         self.saver = tf.train.Saver()
-        could_load, checkpoint_counter = self.load(self.checkpoint_dir)
-        result_dir = os.path.join(self.result_dir, self.model_dir, 'paper_figure')
+        
+        # could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+        
+        could_load, checkpoint_counter = self.load(self.checkpoint_dir, self.inference_counter_number)
+        # tf.global_variables_initializer().run()
+        # self.saver = tf.train.Saver()
+        # could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+        # result_dir = os.path.join(self.result_dir, self.model_dir, 'paper_figure')
+        # check_folder(result_dir)
+        result_dir = os.path.join(self.result_dir, "style_mixing_generator_results/")
         check_folder(result_dir)
 
         if could_load:
-            print(" [*] Load SUCCESS")
+            print(" [*] Load SUCCESS with checkpoint counter {}".format(checkpoint_counter))
         else:
             print(" [!] Load failed...")
 
-        src_seeds = [604, 8440, 7613, 6978, 3004]
-        dst_seeds = [1336, 6968, 607, 728, 7036, 9010]
+
+
+
+
+
+
+
+        # if could_load:
+        #     print(" [*] Load SUCCESS")
+        # else:
+        #     print(" [!] Load failed...")
+
+        # src_seeds = [604, 8440, 7613, 6978, 3004]
+        # dst_seeds = [1336, 6968, 607, 728, 7036, 9010]
+
+        total_seeds = [ np.random.randint(low=0, high=10000) for i in range(11)]
+        src_seeds = total_seeds[:1]
+        dst_seeds = total_seeds[3:4]
+
 
         resolutions = resolution_list(self.img_size)
-        featuremaps = featuremap_list(self.img_size)
+        featuremaps = featuremap_list(self.img_size, self.featuremap_factor)
         n_broadcast = len(resolutions) * 2
 
+
+        
         style_ranges = [range(0, 4)] * 3 + [range(4, 8)] * 2 + [range(8, n_broadcast)]
+
+        
+        print("Style Ranges : {} ".format(style_ranges))
+
 
         alpha = tf.constant(0.0, dtype=tf.float32, shape=[])
         if self.seed :
@@ -1685,6 +1767,7 @@ class StyleGAN(object):
         else :
             src_latents = tf.cast(np.random.normal(size=[len(src_seeds), self.z_dim]), tf.float32)
             dst_latents = tf.cast(np.random.normal(size=[len(dst_seeds), self.z_dim]), tf.float32)
+
 
         with tf.variable_scope('generator', reuse=tf.AUTO_REUSE) :
 
@@ -1696,38 +1779,134 @@ class StyleGAN(object):
             src_dlatents = self.truncation_trick(n_broadcast, src_dlatents, dlatent_avg, self.truncation_psi)
             dst_dlatents = self.truncation_trick(n_broadcast, dst_dlatents, dlatent_avg, self.truncation_psi)
 
+
             src_images = self.sess.run(self.g_synthesis(src_dlatents, alpha, resolutions, featuremaps))
             dst_images = self.sess.run(self.g_synthesis(dst_dlatents, alpha, resolutions, featuremaps))
 
-            for i in range(len(src_images)):
-                src_images[i] = post_process_generator_output(src_images[i])
+            # for i in range(len(src_images)):
+            #     src_images[i] = post_process_generator_output(src_images[i])
 
-            for i in range(len(dst_images)):
-                dst_images[i] = post_process_generator_output(dst_images[i])
+            # for i in range(len(dst_images)):
+            #     dst_images[i] = post_process_generator_output(dst_images[i])
 
             src_dlatents = self.sess.run(src_dlatents)
             dst_dlatents = self.sess.run(dst_dlatents)
 
-            canvas = PIL.Image.new('RGB', (self.img_size * (len(src_seeds) + 1), self.img_size * (len(dst_seeds) + 1)), 'white')
+
+            print("src_dlatents size {} and that of dst_dlatents after {} ".format(src_dlatents.shape, dst_dlatents.shape))
+            print("\n\n\n")
+            
+
+
+            fig = plt.figure(figsize=(4, 20))
+            # gs1 = gridspec.GridSpec(len(src_seeds)+1, len(dst_seeds)+1)
+            # gs1.update(wspace=0.025, hspace=0.05) # set the spacing between axes.              
+            idx = 1
+
+
+            """
+            plot an empty image for future use
+            """
+
+
+            ax = fig.add_subplot( len(src_seeds)+1, len(),  idx)
+            idx += 1
+            ax.imshow(src_images[0,:,:,0])
+            ax.set_visible(False)
+
+
 
             for col, src_image in enumerate(list(src_images)):
-                canvas.paste(PIL.Image.fromarray(np.uint8(src_image), 'RGB'), ((col + 1) * self.img_size, 0))
+                fig.add_subplot( len(dst_seeds)+1, len(src_seeds)+1,  idx)
+                idx += 1
+                plt.imshow( np.squeeze(src_image), cmap='seismic', vmin = -1.0, vmax=1.0);
+                # if(plot_spectral):
+                #     # generated_images = my_dict_back.item()["generated_images"][:11]
+                #     sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
+                #     plt.plot(sp1D_gen, "-r")
+                #     plt.yscale("log")
+                # # plt.imshow(src_image[ :, : , 0])
+                
+                plt.title('src_image_{}'.format(col), fontsize='small')
+                # plt.xticks([])
+                # plt.yticks([])        
+                # canvas.paste(PIL.Image.fromarray(np.uint8(src_image), 'RGB'), ((col + 1) * self.img_size, 0))
 
             for row, dst_image in enumerate(list(dst_images)):
-                canvas.paste(PIL.Image.fromarray(np.uint8(dst_image), 'RGB'), (0, (row + 1) * self.img_size))
+
+                # canvas.paste(PIL.Image.fromarray(np.uint8(dst_image), 'RGB'), (0, (row + 1) * self.img_size))
+
+                fig.add_subplot( len(dst_seeds)+1, len(src_seeds)+1,  idx)
+                idx += 1
+                plt.imshow( np.squeeze(dst_image), cmap='seismic', vmin = -1.0, vmax=1.0);
+                plt.title('dst_image_{}'.format(row), fontsize='small')
+
+                # if(plot_spectral):
+                #     # generated_images = my_dict_back.item()["generated_images"][:11]
+                #     sp1D_gen, sp1D_real = plot_tke(dst_image, real_images, self.img_size, real_data_location)
+                #     plt.plot(sp1D_gen, "-m")
+                #     plt.yscale("log")
+
+
+
+                # plt.imshow(dst_image[ :, : , 0])
+                # plt.title('dst_image_{}'.format(row), fontsize='small')
+                # plt.xticks([])
+                # plt.yticks([])
 
                 row_dlatents = np.stack([dst_dlatents[row]] * len(src_seeds))
+                print("src_dlatents : {} ".format(src_dlatents[:, :, 0]))
+                print("\n")
+                print("style_ranges : {} with size of row_dlatents {} \n  and row_dlatents original : {}".format(style_ranges[row], row_dlatents.shape, row_dlatents[:,:,0]))
                 row_dlatents[:, style_ranges[row]] = src_dlatents[:, style_ranges[row]]
 
-                row_images = self.sess.run(self.g_synthesis(tf.convert_to_tensor(row_dlatents, tf.float32), alpha, resolutions, featuremaps))
+                print("\n")
+                print("row_dlatents after modifying style {} ".format(row_dlatents[:,:,0]))
+                print("*************************\n\n")
+                row_images = self.sess.run( self.g_synthesis(tf.convert_to_tensor(row_dlatents, tf.float32), alpha, resolutions, featuremaps))
 
-                for i in range(len(row_images)):
-                    row_images[i] = post_process_generator_output(row_images[i])
+
+                # for i in range(len(row_images)):
+                #   row_images[i] = post_process_generator_output(row_images[i])
 
                 for col, image in enumerate(list(row_images)):
-                    canvas.paste(PIL.Image.fromarray(np.uint8(image), 'RGB'), ((col + 1) * self.img_size, (row + 1) * self.img_size))
+                    fig.add_subplot(  len(dst_seeds)+1, len(src_seeds)+1,  idx)
+                    idx += 1
+                    plt.imshow(np.squeeze(image), cmap='seismic', vmin = -1.0, vmax=1.0);
+                    # plt.plot(sp1D_gen, "-g")
+                    # plt.yscale("log")
+                    # plt.imshow(image[ :, : , 0])
+                    plt.title('row_image_{}'.format(col), fontsize='small')
+                    # plt.xticks([])
+                    # plt.yticks([])    
+                    # canvas.paste(PIL.Image.fromarray(np.uint8(image), 'RGB'), ((col + 1) * self.img_size, (row + 1) * self.img_size))
 
-            canvas.save('{}/figure03-style-mixing.jpg'.format(result_dir))
+            plt.subplots_adjust( hspace=0, wspace=0)
+            fig.tight_layout()
+            plt.legend(loc='best')
+            plt.savefig( '{}/figure03-style-mixing_with_radial_profile.jpg'.format(result_dir) , bbox_inches='tight', dpi = 400)
+
+
+
+            # canvas = PIL.Image.new('RGB', (self.img_size * (len(src_seeds) + 1), self.img_size * (len(dst_seeds) + 1)), 'white')
+            # for col, src_image in enumerate(list(src_images)):
+            #     canvas.paste(PIL.Image.fromarray(np.uint8(src_image), 'RGB'), ((col + 1) * self.img_size, 0))
+
+            # for row, dst_image in enumerate(list(dst_images)):
+            #     canvas.paste(PIL.Image.fromarray(np.uint8(dst_image), 'RGB'), (0, (row + 1) * self.img_size))
+
+            #     row_dlatents = np.stack([dst_dlatents[row]] * len(src_seeds))
+            #     row_dlatents[:, style_ranges[row]] = src_dlatents[:, style_ranges[row]]
+
+            #     row_images = self.sess.run(self.g_synthesis(tf.convert_to_tensor(row_dlatents, tf.float32), alpha, resolutions, featuremaps))
+
+            #     for i in range(len(row_images)):
+            #         row_images[i] = post_process_generator_output(row_images[i])
+
+            #     for col, image in enumerate(list(row_images)):
+            #         canvas.paste(PIL.Image.fromarray(np.uint8(image), 'RGB'), ((col + 1) * self.img_size, (row + 1) * self.img_size))
+
+            # canvas.save('{}/figure03-style-mixing.jpg'.format(result_dir))
 
     def draw_truncation_trick_figure(self):
 

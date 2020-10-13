@@ -22,7 +22,7 @@ def parse_args():
     desc = "Tensorflow implementation of StyleGAN for climate data"
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('--phase', type=str, default='train', help='[train, test, draw]')
-    parser.add_argument('--draw', type=str, default='uncurated', help='[uncurated, style_mix, truncation_trick]')
+    parser.add_argument('--draw', type=str, default='style_mix', help='[uncurated, style_mix, truncation_trick]')
     parser.add_argument('--dataset', type=str, default= "climate_3000", help='The dataset name what you want to generate')
     parser.add_argument('--iteration', type=int, default=120, help='The number of images used in the train phase 120k by default')
     parser.add_argument('--max_iteration', type=int, default=2500, help='The total number of images 2500k by default')
@@ -114,6 +114,8 @@ def parse_args():
     parser.add_argument('--wandb_flag', type=bool, default= True,
                         help='Flag to log with wandb or not')
 
+    parser.add_argument('--tanh_flag', type=bool, default= False,
+                        help='Flag to use tanh in the last layer of generator or not')
 
     parser.add_argument('--featuremap_factor', type=int, default= 1,
                         help='how much the featuremaps should be divided by')
