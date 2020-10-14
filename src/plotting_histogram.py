@@ -4,6 +4,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy import fftpack
+from cycler import cycler
 
 
 def pixhist(imgs, vals, inverse_transf=None):
@@ -110,3 +111,58 @@ def pspect(imgs, vals, inverse_transf=None):
     chi_val = np.sum(np.divide(np.power(gen_mean[:64] - val_mean[:64], 2.0), val_mean[:64]))
     print(" chi val : {} ".format(chi_val))
     return fig, chi_val
+
+
+
+
+def pspect_group(validation_images, fig, idx, figsize_1, figsize_2, inverse_transf=None):
+    if inverse_transf:
+        imgs = inverse_transf(imgs)
+
+    # fig = plt.figure(figsize = (8,10), dpi=200)
+
+
+    # 1. Setting prop cycle on default rc parameter
+    plt.rc('lines', linewidth=4)
+    plt.rc('axes', prop_cycle=(cycler('color', ['r', 'g', 'b', 'y' , 'saddlebrown']) + cycler('linestyle', ['-', '--', ':', '-.', '--'])))
+
+    fig.add_subplot( figsize_1, figsize_2,  idx)
+    idx += 1
+    labels = ["src_image", "src_image_latent_coarse", "src_image_latent_middle", "src_image_latent_fine", "dst_image" ]
+    for i, image in enumerate(validation_images):
+
+        print("\n image shape before : {} ".format(image.shape))
+        
+        image = np.transpose(image, (2, 0, 1))
+        image = np.expand_dims(image, axis=0)
+        image = np.repeat(image, 100, axis=0)
+        print("image shape after : {} \n".format(image.shape))
+        k, Pk_val = power_spectrum(image)
+        val_mean = np.mean(Pk_val, axis=0)
+        val_std = np.std(Pk_val, axis=0)
+        plt.plot(k, val_mean , label = labels[i],  linewidth=2,)
+
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.ylabel(r'$P(k)$')
+    plt.xlabel(r'$k$')
+
+
+    leg = plt.legend(loc="upper right", bbox_to_anchor=[0, 1], shadow=True, title="Legends", fancybox=True)
+
+
+    # leg = plt.legend(loc='best')
+    # # get the lines and texts inside legend box
+    # leg_lines = leg.get_lines()
+    # leg_texts = leg.get_texts()
+    # # bulk-set the properties of all lines and texts
+    # plt.setp(leg_lines, linewidth=4)
+    # plt.setp(leg_texts, fontsize='small')
+
+
+    plt.title('Power Spectrum')
+
+
+    # plt.savefig( '{}/custom-style-mixing_with_radial_profile.jpg'.format(result_dir) , bbox_inches='tight', dpi = 400)
+    return 
+
