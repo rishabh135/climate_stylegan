@@ -124,7 +124,7 @@ def pspect_group(validation_images, fig, idx, figsize_1, figsize_2, inverse_tran
 
     # 1. Setting prop cycle on default rc parameter
     plt.rc('lines', linewidth=4)
-    plt.rc('axes', prop_cycle=(cycler('color', ['r', 'g', 'b', 'y' , 'saddlebrown']) + cycler('linestyle', ['-', '--', ':', '-.', '--'])))
+    plt.rc('axes', prop_cycle=(cycler('color', ['r', 'saddlebrown', 'b', 'g' , 'saddlebrown']) + cycler('linestyle', ['-', '--', ':', '-.', '-'])))
 
     fig.add_subplot( figsize_1, figsize_2,  idx)
     idx += 1
@@ -140,15 +140,15 @@ def pspect_group(validation_images, fig, idx, figsize_1, figsize_2, inverse_tran
         k, Pk_val = power_spectrum(image)
         val_mean = np.mean(Pk_val, axis=0)
         val_std = np.std(Pk_val, axis=0)
-        plt.plot(k, val_mean , label = labels[i],  linewidth=2,)
+        plt.plot(k, val_mean , label = labels[i],  linewidth=0.5)
 
-    plt.xscale('log')
+    # plt.xscale('log')
     plt.yscale('log')
     plt.ylabel(r'$P(k)$')
     plt.xlabel(r'$k$')
 
 
-    leg = plt.legend(loc="upper right", bbox_to_anchor=[0, 1], shadow=True, title="Legends", fancybox=True)
+    # leg = plt.legend(loc="upper right", bbox_to_anchor=[0, 1], shadow=True, title="Legends", fancybox=True)
 
 
     # leg = plt.legend(loc='best')

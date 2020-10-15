@@ -1748,8 +1748,8 @@ class StyleGAN(object):
         # dst_seeds = [1336, 6968, 607, 728, 7036, 9010]
 
         total_seeds = [ np.random.randint(low=0, high=10000) for i in range(11)]
-        src_seeds = [604]
-        dst_seeds = [606]
+        src_seeds = [500]
+        dst_seeds = [5000, 5001]
         # dst_seeds = total_seeds[3:4]
 
 
@@ -1760,7 +1760,8 @@ class StyleGAN(object):
 
         #  critical to how you want to change different styles
         style_ranges = [range(0, 4)]  + [range(4, 8)]  + [range(8, n_broadcast)]
-        pspect_images = []
+
+        
         
         print("Style Ranges : {} ".format(style_ranges))
 
@@ -1780,28 +1781,22 @@ class StyleGAN(object):
             src_dlatents = self.g_mapping(src_latents, n_broadcast)
             dst_dlatents = self.g_mapping(dst_latents, n_broadcast)
 
-            dlatent_avg = tf.get_variable('w_avg')
-
-            src_dlatents = self.truncation_trick(n_broadcast, src_dlatents, dlatent_avg, self.truncation_psi)
-            dst_dlatents = self.truncation_trick(n_broadcast, dst_dlatents, dlatent_avg, self.truncation_psi)
-
 
             src_images = self.sess.run(self.g_synthesis(src_dlatents, alpha, resolutions, featuremaps))
             dst_images = self.sess.run(self.g_synthesis(dst_dlatents, alpha, resolutions, featuremaps))
-
-            # for i in range(len(src_images)):
-            #     src_images[i] = post_process_generator_output(src_images[i])
-
-            # for i in range(len(dst_images)):
-            #     dst_images[i] = post_process_generator_output(dst_images[i])
 
             src_dlatents = self.sess.run(src_dlatents)
             dst_dlatents = self.sess.run(dst_dlatents)
 
 
-            print("src_dlatents size {} and that of dst_dlatents after {} ".format(src_dlatents.shape, dst_dlatents.shape))
+            print("src_dlatents size {} and that of dst_dlatents size {} ".format(src_dlatents.shape, dst_dlatents.shape))
             print("\n\n\n")
             
+
+
+            
+            figsize_1 = len(dst_images)
+            figsize_2 = len(style_ranges)+3
 
 
             fig = plt.figure(figsize=(15, 5))
@@ -1815,99 +1810,64 @@ class StyleGAN(object):
             """
 
 
-            ax = fig.add_subplot( len(src_seeds), len(style_ranges)+3,  idx)
+            # ax = fig.add_subplot( figsize_1, figsize_2,  idx)
+
+            fig, axs = plt.subplots(figsize_1, figsize_2)
             
             # idx += 1
             # ax.imshow(src_images[0,:,:,0])
             # ax.set_visible(False)
 
 
+            for rr, ddst_image in enumerate(list(dst_images)):
 
-            for col, src_image in enumerate(list(src_images)):
-                pspect_images.append(src_image)
-                fig.add_subplot( len(src_seeds), len(style_ranges)+3,  idx)
-                idx += 1
-                plt.imshow( np.squeeze(src_image), cmap='seismic', vmin = -1.0, vmax=1.0);
-                plt.title('src_image_{}'.format(col), fontsize='small')
-                # if(plot_spectral):
-                #     # generated_images = my_dict_back.item()["generated_images"][:11]
-                #     sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
-                #     plt.plot(sp1D_gen, "-r")
-                #     plt.yscale("log")
-                # # plt.imshow(src_image[ :, : , 0])
+                pspect_images = []
+                
+                # for col, src_image in enumerate(list(src_images)):
+                #   
+                pspect_images.append(src_images[0])
+                # fig.add_subplot( figsize_1, figsize_2,  idx)
+                # idx += 1
+
+                axs[rr,0].imshow( np.squeeze(src_images[0]), cmap='seismic', vmin = -1.0, vmax=1.0);
+                
+                axs[rr,0].set_title('src_image_{}'.format(rr), fontsize='small')
                 
 
-                # plt.xticks([])
-                # plt.yticks([])        
-                # canvas.paste(PIL.Image.fromarray(np.uint8(src_image), 'RGB'), ((col + 1) * self.img_size, 0))
+                for col in range(len(style_ranges)):
 
+                    row_dlatents = np.stack([dst_dlatents[rr]] * len(src_seeds))
+                    print("src_dlatents : {} ".format(src_dlatents[:, :, 0]))
+                    print("\n")
+                    print("style_ranges : {} with size of row_dlatents {} \n  and row_dlatents original : ".format(style_ranges[col], row_dlatents.shape  ))
+                    row_dlatents[:, style_ranges[col]] = src_dlatents[:, style_ranges[col]]
 
-            for col in range(len(style_ranges)):
+                    print("\n")
+                    print("row_dlatents after modifying style {} ".format(row_dlatents[:,:,0]))
+                    print("*************************\n\n")
+                    row_image = self.sess.run( self.g_synthesis(tf.convert_to_tensor(row_dlatents, tf.float32), alpha, resolutions, featuremaps))
+                    
+                    # fig.add_subplot( figsize_1, figsize_2,  idx)
+                    # idx += 1
 
-                row_dlatents = np.stack([dst_dlatents[0]] * len(src_seeds))
-                print("src_dlatents : {} ".format(src_dlatents[:, :, 0]))
-                print("\n")
-                print("style_ranges : {} with size of row_dlatents {} \n  and row_dlatents original : ".format(style_ranges[col], row_dlatents.shape  ))
-                row_dlatents[:, style_ranges[col]] = src_dlatents[:, style_ranges[col]]
-
-                print("\n")
-                print("row_dlatents after modifying style {} ".format(row_dlatents[:,:,0]))
-                print("*************************\n\n")
-                row_image = self.sess.run( self.g_synthesis(tf.convert_to_tensor(row_dlatents, tf.float32), alpha, resolutions, featuremaps))
-                fig.add_subplot( len(src_seeds), len(style_ranges)+3,  idx)
-                idx += 1
-
-                pspect_images.append(np.squeeze(row_image,  axis=0))
-                plt.imshow(np.squeeze(row_image), cmap='seismic', vmin = -1.0, vmax=1.0);
-                plt.title('style_range_{}'.format(col), fontsize='small')
+                    pspect_images.append(np.squeeze(row_image,  axis=0))
+                    axs[rr, col+1].imshow(np.squeeze(row_image), cmap='seismic', vmin = -1.0, vmax=1.0);
+                    axs[rr, col+1].set_title('style_range_{}'.format(col), fontsize='small')
 
 
 
-            for col, dst_image in enumerate(list(dst_images)):
-                fig.add_subplot( len(src_seeds), len(style_ranges)+3,  idx)
-                idx += 1
-                pspect_images.append(dst_image)
-                plt.imshow( np.squeeze(dst_image), cmap='seismic', vmin = -1.0, vmax=1.0);
-                plt.title('dst_image_{}'.format(col), fontsize='small')
-                # if(plot_spectral):
-                #     # generated_images = my_dict_back.item()["generated_images"][:11]
-                #     sp1D_gen, sp1D_real = plot_tke(src_image, real_images, self.img_size, real_data_location)
-                #     plt.plot(sp1D_gen, "-r")
-                #     plt.yscale("log")
-                # # plt.imshow(src_image[ :, : , 0])
-                
+                # for col, dst_image in enumerate(list(dst_images)):
+                # fig.add_subplot( figsize_1, figsize_2,  idx)
+                # idx += 1
 
-
-                # for i in range(len(row_images)):
-                #   row_images[i] = post_process_generator_output(row_images[i])
-
-                # for col, image in enumerate(list(row_images)):
-                #     fig.add_subplot(  len(dst_seeds)+1, len(src_seeds)+1,  idx)
-                #     idx += 1
-                #     plt.imshow(np.squeeze(image), cmap='seismic', vmin = -1.0, vmax=1.0);
-                #     # plt.plot(sp1D_gen, "-g")
-                #     # plt.yscale("log")
-                #     # plt.imshow(image[ :, : , 0])
-                #     plt.title('row_image_{}'.format(col), fontsize='small')
-                    # plt.xticks([])
-                    # plt.yticks([])    
-                    # canvas.paste(PIL.Image.fromarray(np.uint8(image), 'RGB'), ((col + 1) * self.img_size, (row + 1) * self.img_size))
+                pspect_images.append(ddst_image )
+                axs[rr, len(style_ranges)+1].imshow( np.squeeze(ddst_image), cmap='seismic', vmin = -1.0, vmax=1.0);
+                axs[rr, len(style_ranges)+1].title('dst_image_{}'.format(rr), fontsize='small')
+                pspect_group(pspect_images, axs, rr)            
 
             plt.subplots_adjust( hspace=0, wspace=0)
-            fig.tight_layout()
-
-
-
-            
-
-            # power_spectra_image, spectra_vals = pspect(generated_fake_images[:,channel:channel+1], real_images[:,channel:channel+1] )
-            # self.experiment.log({"power_spectra_images_channel_{}".format(channel): [self.experiment.Image(power_spectra_image, caption= "power_spectra_plots_channel_{}_{}_res_{}".format(channel, idx, current_res) )]}, step = counter)
-                            
-            figsize_1 = len(src_images)
-            figsize_2 = len(style_ranges)+3
-            
-            fig = pspect_group(pspect_images, fig, idx, figsize_1, figsize_2)
-            plt.savefig( '{}/custom-style-mixing_with_radial_profile.jpg'.format(result_dir) , bbox_inches='tight', dpi = 400)
+            # plt.tight_layout()
+            plt.savefig( '{}/custom-style-mixing_with_radial_profile_for_multiple_dst.jpg'.format(result_dir) , bbox_inches='tight', dpi = 400)
 
 
 
