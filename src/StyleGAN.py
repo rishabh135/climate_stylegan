@@ -1748,8 +1748,8 @@ class StyleGAN(object):
         # dst_seeds = [1336, 6968, 607, 728, 7036, 9010]
 
         total_seeds = [ np.random.randint(low=0, high=10000) for i in range(11)]
-        src_seeds = [604]
-        dst_seeds = [606]
+        src_seeds = [100]
+        dst_seeds = [1200]
         # dst_seeds = total_seeds[3:4]
 
 
@@ -1907,7 +1907,7 @@ class StyleGAN(object):
             figsize_2 = len(style_ranges)+3
             
             fig = pspect_group(pspect_images, fig, idx, figsize_1, figsize_2)
-            plt.savefig( '{}/custom-style-mixing_with_radial_profile.jpg'.format(result_dir) , bbox_inches='tight', dpi = 400)
+            plt.savefig( '{}/custom-style-mixing_with_radial_profile_{}.jpg'.format(result_dir, dst_seeds[0]) , bbox_inches='tight', dpi = 400)
 
 
 
