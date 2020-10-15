@@ -316,7 +316,7 @@ def get_style_class(resolutions, featuremaps) :
 
     return coarse_styles, middle_styles, fine_styles
 
-def synthesis_const_block(res, w_broadcasted, n_f, sn=False):
+def synthesis_const_block(res, w_broadcasted, n_f, sn=False, is_training=True):
     w0 = w_broadcasted[:, 0]
     w1 = w_broadcasted[:, 1]
 
@@ -328,7 +328,8 @@ def synthesis_const_block(res, w_broadcasted, n_f, sn=False):
             x = tf.get_variable('Const', shape=[1, 4, 4, n_f], dtype=tf.float32, initializer=tf.initializers.ones())
             x = tf.tile(x, [batch_size, 1, 1, 1])
 
-            x = apply_noise(x) # B module
+            if(is_training):
+                x = apply_noise(x) # B module
             x = apply_bias(x, lrmul=1.0)
 
             x = lrelu(x, 0.2)
@@ -337,7 +338,8 @@ def synthesis_const_block(res, w_broadcasted, n_f, sn=False):
         with tf.variable_scope('Conv'):
             x = conv(x, channels=n_f, kernel=3, stride=1, gain=np.sqrt(2), lrmul=1.0, sn=sn)
 
-            x = apply_noise(x) # B module
+            if(is_training):
+                x = apply_noise(x) # B module
             x = apply_bias(x, lrmul=1.0)
 
             x = lrelu(x, 0.2)
@@ -345,7 +347,7 @@ def synthesis_const_block(res, w_broadcasted, n_f, sn=False):
 
     return x
 
-def synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=False):
+def synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=False, is_training=True):
     w0 = w_broadcasted[:, layer_index]
     w1 = w_broadcasted[:, layer_index + 1]
 
@@ -354,7 +356,8 @@ def synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=False):
             x = upscale_conv(x, n_f, kernel=3, gain=np.sqrt(2), lrmul=1.0, sn=sn)
             x = blur2d(x, [1, 2, 1])
 
-            x = apply_noise(x) # B module
+            if(is_training):
+                x = apply_noise(x) # B module
             x = apply_bias(x, lrmul=1.0)
 
             x = lrelu(x, 0.2)
@@ -363,7 +366,8 @@ def synthesis_block(x, res, w_broadcasted, layer_index, n_f, sn=False):
         with tf.variable_scope('Conv1'):
             x = conv(x, n_f, kernel=3, stride=1, gain=np.sqrt(2), lrmul=1.0, sn=sn)
 
-            x = apply_noise(x) # B module
+            if(is_training):
+                x = apply_noise(x) # B module
             x = apply_bias(x, lrmul=1.0)
 
             x = lrelu(x, 0.2)
