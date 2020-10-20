@@ -1475,6 +1475,8 @@ class StyleGAN(object):
             val2 = val1 * u
             return z0 + val2
 
+
+        np.random.seed(100)
         z_0 = np.random.normal(size=[batch_size, z_dim]).astype('float32')
         z_1 = np.random.normal(size=[batch_size, z_dim]).astype('float32')
 
@@ -1580,10 +1582,10 @@ class StyleGAN(object):
 
         os.chdir(result_dir)
         subprocess.call([
-            'ffmpeg', '-framerate', '1', '-i', "generator_{}_interpolate_step_%03d.png".format(checkpoint_counter) , '-r', '30', '-pix_fmt', 'yuv420p',
-            'interpolation_video_for_linear_interpolation_in_w_{}.mp4'.format(checkpoint_counter)
+            'ffmpeg', '-framerate', '5', '-i', "generator_{}_interpolate_step_%03d.png".format(checkpoint_counter) , '-r', '30', '-pix_fmt', 'yuv420p',
+            'interpolation_video_for_linear_interpolation_in_w_{}_without_noise_framerate_5.mp4'.format(checkpoint_counter)
         ])
-        for file_name in glob.glob("generator_{}_interpolate_step_*.png".format(checkpoint_counter)):
+        for file_name in glob.glob("without_noise_generator_{}_interpolate_step_*.png".format(checkpoint_counter)):
             os.remove(file_name)
 
 
@@ -1749,7 +1751,7 @@ class StyleGAN(object):
 
         total_seeds = [ np.random.randint(low=0, high=10000) for i in range(11)]
         src_seeds = [100]
-        dst_seeds = [1200]
+        dst_seeds = [1100]
         # dst_seeds = total_seeds[3:4]
 
 
