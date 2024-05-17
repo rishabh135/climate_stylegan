@@ -1,5 +1,5 @@
 # Cliamte StyleGAN-Tensorflow
-**Simple & Intuitive** Tensorflow implementation of *"A Style-Based Generator Architecture for Generative Adversarial Networks"* **[NeurIPS 2020 Workshop poster](https://ai4earthscience.github.io/neurips-2020-workshop/)**
+**Simple & Intuitive** Tensorflow implementation of *"A Style-Based Generator Architecture for Generative Adversarial Networks"* **[NeurIPS 2020 Workshop poster](https://ai4earthscience.github.io/neurips-2020-workshop/papers/ai4earth_neurips_2020_53.pdf)**
 
 
 
@@ -21,9 +21,7 @@ The cropped data will be located in folder : ```"/global/cscratch1/sd/rgupta2/ba
 
 ### Train for annealed climate training 
 
-```
 
-#### Figure08 truncation trick
 ```
 CUDA_VISIBLE_DEVICES=1 bash  ./new_bash_scripts/climate_training_128_omega_wo_progressive_custom_cropping.sh
 ```
