@@ -1,5 +1,5 @@
-# StyleGAN-Tensorflow
-**Simple & Intuitive** Tensorflow implementation of *"A Style-Based Generator Architecture for Generative Adversarial Networks"* **(CVPR 2019 Oral)**
+# Cliamte StyleGAN-Tensorflow
+**Simple & Intuitive** Tensorflow implementation of *"A Style-Based Generator Architecture for Generative Adversarial Networks"* **[NeurIPS 2020 Workshop poster](https://ai4earthscience.github.io/neurips-2020-workshop/)**
 
 
 <div align="center">
@@ -8,20 +8,8 @@
 
 ### [Official code](https://github.com/NVlabs/stylegan) | [Paper](https://arxiv.org/abs/1812.04948) | [Video](https://www.youtube.com/watch?v=kSLJriaOumA&feature=youtu.be) | [FFHQ Dataset](https://github.com/NVlabs/ffhq-dataset) 
 
-## Other implementation
-### [TF Estimator version](https://github.com/moono/stylegan-reproduced)
-
-## Usage
-```
-├── dataset
-   └── YOUR_DATASET_NAME
-       ├── 000001.jpg 
-       ├── 000002.png
-       └── ...
 
 
-
-```
 
 
 
@@ -60,7 +48,7 @@ python main.py --dataset FFHQ --img_size 1024 --progressive True --phase draw --
 
 #### Figure08 truncation trick
 ```
-python main.py --dataset FFHQ --img_size 1024 --progressive True --phase draw --draw truncation_trick
+CUDA_VISIBLE_DEVICES=1 bash  ./new_bash_scripts/main.sh 
 ```
 
 ## Architecture
@@ -97,4 +85,4 @@ python main.py --dataset FFHQ --img_size 1024 --progressive True --phase draw --
 </div>
 
 ## Author
-[Junho Kim](http://bit.ly/jhkim_ai)
+[Rishabh Gupta](http://linedin.com/in/rishabh-gupta-ai/)
